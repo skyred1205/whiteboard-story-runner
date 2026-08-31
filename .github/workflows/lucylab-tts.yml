@@ -1,0 +1,43 @@
+name: LucyLab TTS
+
+on:
+  push:
+    branches: [chatgpt-tts]
+    paths:
+      - 'automation/jobs/current.json'
+      - 'automation/lucylab_bridge.py'
+      - '.github/workflows/lucylab-tts.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run LucyLab bridge
+        env:
+          LUCYLAB_API_KEY: ${{ secrets.LUCYLAB_API_KEY }}
+        run: |
+          python automation/lucylab_bridge.py \
+            --job automation/jobs/current.json \
+            --out automation/output/current
+
+      - name: Upload LucyLab output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lucylab-current
+          path: automation/output/current
+          if-no-files-found: warn
+          retention-days: 7
