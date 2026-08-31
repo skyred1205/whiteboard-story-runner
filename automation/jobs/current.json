@@ -1,7 +1,7 @@
 {
-  "enabled": false,
-  "jobId": "bootstrap",
-  "text": "Kiem tra runner LucyLab.",
+  "enabled": true,
+  "jobId": "lucylab-auth-test-20260831",
+  "text": "Kỷ luật không bắt đầu từ cảm hứng. Nó bắt đầu từ một việc nhỏ bạn vẫn làm ngay cả khi không muốn.",
   "voiceAlias": "co-nhan",
   "speed": 1.0
 }
