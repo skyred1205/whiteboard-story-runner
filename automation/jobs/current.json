@@ -1,0 +1,7 @@
+{
+  "enabled": false,
+  "jobId": "bootstrap",
+  "text": "Kiem tra runner LucyLab.",
+  "voiceAlias": "co-nhan",
+  "speed": 1.0
+}
