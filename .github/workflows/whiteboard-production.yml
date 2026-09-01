@@ -57,6 +57,7 @@ jobs:
         shell: bash
         run: |
           base64 -d automation/production_runner.py.gz.b64 | gzip -d > automation/production_runner.py
+          sed -i 's/retries: int = 5/retries: int = 10/' automation/production_runner.py
           python -m py_compile automation/production_runner.py
 
       - name: Run full production
