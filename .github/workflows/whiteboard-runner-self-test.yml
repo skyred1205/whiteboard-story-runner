@@ -27,8 +27,9 @@ jobs:
       WHITEBOARD_UPSTREAM_COMMIT: 696a7243c0e6ffb6827676e539c2ca5ebae2bf6b
       V33_PAYLOAD_SHA: e73316a720647fd156f96fbb4375987979bc525c310b31b8bd5e36e9e042e575
       V33_SOURCE_SHA: ae88701e4e1bd3162921efeb4dc826e0c513b2ddad2bc33d6cc819ea5087de2e
-      CONHAN_ASSET_SHA: 3af1ea3a6d50d60922d7f19221e14ecfd9da7005cc3386bc7704ae44236e782c
-      ERASER_ASSET_SHA: dfe1648e6a8de3a4065a5b1d06a1f279b9148806a658c92082ed7676b7771316
+      CONHAN_ASSET_SHA: 0f4395bf47a2a5ac9947dc0517f94ddbc49846c2988c8c31132a14a65029794e
+      ERASER_ASSET_SHA: 50bd24485c23b281967b9b4ea5a1200a0c48b25ae6dad75c82499f2c63411949
+      DRAWING_ASSET_SHA: 3ec5e9592aff19a65084616dd6704215de5e81f3775575d5f2bf643616309647
     steps:
       - uses: actions/checkout@v4
 
@@ -66,15 +67,21 @@ jobs:
           base64 -d automation/v33/v33_finalize.py.gz.b64 | gzip -d > automation/v33_finalize.py
           echo "Checking V3.3 source"
           test "$(sha256sum automation/v33_finalize.py | awk '{print $1}')" = "$V33_SOURCE_SHA"
-          echo "Checking character asset"
+          echo "Checking visual assets"
           test "$(sha256sum automation/v33/assets/conhan-front.png | awk '{print $1}')" = "$CONHAN_ASSET_SHA"
-          echo "Checking eraser asset"
           test "$(sha256sum automation/v33/assets/eraser-hand.png | awk '{print $1}')" = "$ERASER_ASSET_SHA"
+          test "$(sha256sum automation/v33/assets/drawing-hand.png | awk '{print $1}')" = "$DRAWING_ASSET_SHA"
           python -m py_compile automation/production_runner.py automation/v33_finalize.py
           python - <<'PY'
           from PIL import Image
-          for p in ['automation/v33/assets/conhan-front.png','automation/v33/assets/eraser-hand.png']:
-              im=Image.open(p); im.load(); print(p, im.size, im.mode)
+          paths=[
+              'automation/v33/assets/conhan-front.png',
+              'automation/v33/assets/eraser-hand.png',
+              'automation/v33/assets/drawing-hand.png',
+          ]
+          for p in paths:
+              print('Loading', p, flush=True)
+              im=Image.open(p); im.load(); print('VALID', p, im.size, im.mode, flush=True)
           PY
 
       - name: Create V3.3 fixture
