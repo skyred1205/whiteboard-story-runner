@@ -75,12 +75,12 @@ jobs:
         shell: bash
         run: |
           PAYLOAD_SHA=$(cat automation/runner_parts/part-*.b64 | sha256sum | awk '{print $1}')
-          test "$PAYLOAD_SHA" = "6697073e702b04d89045e9173444fc5fe64e0875750eccf0835d51300191db60"
+          test "$PAYLOAD_SHA" = "0f46e824a6955c11b91ab9d64b95b10fc0d6e971f1ff7099ca446fa0f9de9113"
           cat automation/runner_parts/part-*.b64 | base64 -d | gzip -d > automation/production_runner.py
           SOURCE_SHA=$(sha256sum automation/production_runner.py | awk '{print $1}')
-          test "$SOURCE_SHA" = "21713423bfbfe4bf983e16d871bf456d4fc32968d81c946c5d0091a03f0e5d16"
+          test "$SOURCE_SHA" = "1c05f173076a8900c472b0f0f93fd3959461a6db8623ca5fb019d0e931506527"
           python -m py_compile automation/production_runner.py
-          echo "Production runner SHA-256: $SOURCE_SHA"
+          echo "Production runner 3.1.1 SHA-256: $SOURCE_SHA"
 
       - name: Run full production
         env:
