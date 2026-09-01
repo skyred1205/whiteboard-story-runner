@@ -25,9 +25,9 @@ jobs:
     env:
       PYTHONUNBUFFERED: '1'
       WHITEBOARD_UPSTREAM_COMMIT: 696a7243c0e6ffb6827676e539c2ca5ebae2bf6b
-      V33_PAYLOAD_SHA: 74e37b5030350b37fbd78f110e58d3d1bab3a261def92e117ff91494bd156b27
-      V33_SOURCE_SHA: d0d653c033b033d15056a3ef66f72bf73d927b913271404c866a2881968094b6
-      CONHAN_ASSET_SHA: a3dbc317340633f04a9688e084a68cb165510f65395f2c46318c9cd1a5dc18d0
+      V33_PAYLOAD_SHA: e73316a720647fd156f96fbb4375987979bc525c310b31b8bd5e36e9e042e575
+      V33_SOURCE_SHA: ae88701e4e1bd3162921efeb4dc826e0c513b2ddad2bc33d6cc819ea5087de2e
+      CONHAN_ASSET_SHA: 3af1ea3a6d50d60922d7f19221e14ecfd9da7005cc3386bc7704ae44236e782c
       ERASER_ASSET_SHA: dfe1648e6a8de3a4065a5b1d06a1f279b9148806a658c92082ed7676b7771316
     steps:
       - uses: actions/checkout@v4
@@ -56,13 +56,19 @@ jobs:
       - name: Restore runners and validate assets
         shell: bash
         run: |
+          echo "Checking core payload"
           test "$(cat automation/runner_parts/part-*.b64 | sha256sum | awk '{print $1}')" = "0f46e824a6955c11b91ab9d64b95b10fc0d6e971f1ff7099ca446fa0f9de9113"
           cat automation/runner_parts/part-*.b64 | base64 -d | gzip -d > automation/production_runner.py
+          echo "Checking core source"
           test "$(sha256sum automation/production_runner.py | awk '{print $1}')" = "1c05f173076a8900c472b0f0f93fd3959461a6db8623ca5fb019d0e931506527"
+          echo "Checking V3.3 payload"
           test "$(sha256sum automation/v33/v33_finalize.py.gz.b64 | awk '{print $1}')" = "$V33_PAYLOAD_SHA"
           base64 -d automation/v33/v33_finalize.py.gz.b64 | gzip -d > automation/v33_finalize.py
+          echo "Checking V3.3 source"
           test "$(sha256sum automation/v33_finalize.py | awk '{print $1}')" = "$V33_SOURCE_SHA"
+          echo "Checking character asset"
           test "$(sha256sum automation/v33/assets/conhan-front.png | awk '{print $1}')" = "$CONHAN_ASSET_SHA"
+          echo "Checking eraser asset"
           test "$(sha256sum automation/v33/assets/eraser-hand.png | awk '{print $1}')" = "$ERASER_ASSET_SHA"
           python -m py_compile automation/production_runner.py automation/v33_finalize.py
           python - <<'PY'
