@@ -11,37 +11,16 @@ permissions:
   contents: read
 
 jobs:
-  portable-assets:
+  inspect-finalizer:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/checkout@v4
-        with:
-          repository: geeklee/srt-whiteboard-animation
-          ref: 696a7243c0e6ffb6827676e539c2ca5ebae2bf6b
-          path: _vendor/srt-whiteboard-animation
-          persist-credentials: false
-
-      - name: Install Pillow
-        run: python -m pip install --disable-pip-version-check Pillow==11.0.0
-
-      - name: Validate portable assets and drawing hand injection
+      - name: Decode finalizer and print relevant source
+        shell: bash
         run: |
-          python automation/v33/prepare_portable_assets.py \
-            --source-dir automation/v33/assets_b64 \
-            --out automation/v33/runtime-assets \
-            --upstream _vendor/srt-whiteboard-animation
-          python - <<'PY'
-          from pathlib import Path
-          from PIL import Image
-          for p in [
-              Path('automation/v33/runtime-assets/conhan-front.png'),
-              Path('automation/v33/runtime-assets/eraser-hand.png'),
-              Path('automation/v33/runtime-assets/drawing-hand.png'),
-              Path('_vendor/srt-whiteboard-animation/assets/drawing-hand.png'),
-          ]:
-              with Image.open(p) as im:
-                  im.load()
-                  print('VALID', p, im.size, im.mode)
-          PY
+          base64 -d automation/v33/v33_finalize.py.gz.b64 | gzip -d > /tmp/v33_finalize.py
+          echo '--- draw_money / draw_object ---'
+          sed -n '140,255p' /tmp/v33_finalize.py
+          echo '--- renderKind dispatch ---'
+          grep -n "kind==\|kind ==\|renderKind" /tmp/v33_finalize.py || true
