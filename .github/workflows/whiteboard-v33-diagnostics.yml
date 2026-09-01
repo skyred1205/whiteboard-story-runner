@@ -11,40 +11,37 @@ permissions:
   contents: read
 
 jobs:
-  checksums:
+  portable-assets:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/checkout@v4
+        with:
+          repository: geeklee/srt-whiteboard-animation
+          ref: 696a7243c0e6ffb6827676e539c2ca5ebae2bf6b
+          path: _vendor/srt-whiteboard-animation
+          persist-credentials: false
+
       - name: Install Pillow
         run: python -m pip install --disable-pip-version-check Pillow==11.0.0
 
-      - name: Print observed checksums
-        shell: bash
+      - name: Validate portable assets and drawing hand injection
         run: |
-          set -euo pipefail
-          echo "CORE_PAYLOAD_SHA=$(cat automation/runner_parts/part-*.b64 | sha256sum | awk '{print $1}')"
-          cat automation/runner_parts/part-*.b64 | base64 -d | gzip -d > /tmp/production_runner.py
-          echo "CORE_SOURCE_SHA=$(sha256sum /tmp/production_runner.py | awk '{print $1}')"
-          echo "V33_PAYLOAD_SHA=$(sha256sum automation/v33/v33_finalize.py.gz.b64 | awk '{print $1}')"
-          base64 -d automation/v33/v33_finalize.py.gz.b64 | gzip -d > /tmp/v33_finalize.py
-          echo "V33_SOURCE_SHA=$(sha256sum /tmp/v33_finalize.py | awk '{print $1}')"
-          echo "CONHAN_ASSET_SHA=$(sha256sum automation/v33/assets/conhan-front.png | awk '{print $1}')"
-          echo "ERASER_ASSET_SHA=$(sha256sum automation/v33/assets/eraser-hand.png | awk '{print $1}')"
-          echo "DRAWING_ASSET_SHA=$(sha256sum automation/v33/assets/drawing-hand.png | awk '{print $1}')"
-          python -m py_compile /tmp/production_runner.py /tmp/v33_finalize.py
-
-      - name: Validate PNG streams
-        shell: bash
-        run: |
+          python automation/v33/prepare_portable_assets.py \
+            --source-dir automation/v33/assets_b64 \
+            --out automation/v33/runtime-assets \
+            --upstream _vendor/srt-whiteboard-animation
           python - <<'PY'
+          from pathlib import Path
           from PIL import Image
           for p in [
-              'automation/v33/assets/conhan-front.png',
-              'automation/v33/assets/eraser-hand.png',
-              'automation/v33/assets/drawing-hand.png',
+              Path('automation/v33/runtime-assets/conhan-front.png'),
+              Path('automation/v33/runtime-assets/eraser-hand.png'),
+              Path('automation/v33/runtime-assets/drawing-hand.png'),
+              Path('_vendor/srt-whiteboard-animation/assets/drawing-hand.png'),
           ]:
-              print('Loading', p, flush=True)
-              im=Image.open(p); im.load()
-              print('VALID', p, im.size, im.mode, flush=True)
+              with Image.open(p) as im:
+                  im.load()
+                  print('VALID', p, im.size, im.mode)
           PY
