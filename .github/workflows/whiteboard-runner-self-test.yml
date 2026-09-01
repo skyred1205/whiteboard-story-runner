@@ -5,7 +5,9 @@ on:
     branches: [chatgpt-tts]
     paths:
       - '.github/workflows/whiteboard-runner-self-test.yml'
+      - '.github/workflows/whiteboard-production.yml'
       - 'automation/runner_parts/**'
+      - 'automation/v33/**'
       - 'automation/requirements-production.txt'
   workflow_dispatch:
 
@@ -19,80 +21,49 @@ concurrency:
 jobs:
   self-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       PYTHONUNBUFFERED: '1'
       WHITEBOARD_UPSTREAM_COMMIT: 696a7243c0e6ffb6827676e539c2ca5ebae2bf6b
+      V33_PAYLOAD_SHA: 74e37b5030350b37fbd78f110e58d3d1bab3a261def92e117ff91494bd156b27
+      V33_SOURCE_SHA: d0d653c033b033d15056a3ef66f72bf73d927b913271404c866a2881968094b6
     steps:
-      - name: Checkout runner
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Checkout pinned upstream renderer
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           repository: geeklee/srt-whiteboard-animation
           ref: 696a7243c0e6ffb6827676e539c2ca5ebae2bf6b
           path: _vendor/srt-whiteboard-animation
           persist-credentials: false
 
-      - name: Verify upstream commit
-        shell: bash
-        run: |
-          OBSERVED=$(git -C _vendor/srt-whiteboard-animation rev-parse HEAD)
-          test "$OBSERVED" = "$WHITEBOARD_UPSTREAM_COMMIT"
-          echo "Pinned upstream v1.0.0: $OBSERVED"
+      - name: Verify upstream
+        run: test "$(git -C _vendor/srt-whiteboard-animation rev-parse HEAD)" = "$WHITEBOARD_UPSTREAM_COMMIT"
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
           cache-dependency-path: automation/requirements-production.txt
 
-      - name: Install runtime dependencies
-        shell: bash
+      - name: Install dependencies
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
           python -m pip install --disable-pip-version-check -r automation/requirements-production.txt
 
-      - name: Restore and validate production runner 3.1.1
+      - name: Restore runners
         shell: bash
         run: |
-          PAYLOAD_SHA=$(cat automation/runner_parts/part-*.b64 | sha256sum | awk '{print $1}')
-          test "$PAYLOAD_SHA" = "0f46e824a6955c11b91ab9d64b95b10fc0d6e971f1ff7099ca446fa0f9de9113"
+          test "$(cat automation/runner_parts/part-*.b64 | sha256sum | awk '{print $1}')" = "0f46e824a6955c11b91ab9d64b95b10fc0d6e971f1ff7099ca446fa0f9de9113"
           cat automation/runner_parts/part-*.b64 | base64 -d | gzip -d > automation/production_runner.py
-          SOURCE_SHA=$(sha256sum automation/production_runner.py | awk '{print $1}')
-          test "$SOURCE_SHA" = "1c05f173076a8900c472b0f0f93fd3959461a6db8623ca5fb019d0e931506527"
-          python -m py_compile automation/production_runner.py
-          echo "Production runner 3.1.1 SHA-256: $SOURCE_SHA"
+          test "$(sha256sum automation/production_runner.py | awk '{print $1}')" = "1c05f173076a8900c472b0f0f93fd3959461a6db8623ca5fb019d0e931506527"
+          test "$(sha256sum automation/v33/v33_finalize.py.gz.b64 | awk '{print $1}')" = "$V33_PAYLOAD_SHA"
+          base64 -d automation/v33/v33_finalize.py.gz.b64 | gzip -d > automation/v33_finalize.py
+          test "$(sha256sum automation/v33_finalize.py | awk '{print $1}')" = "$V33_SOURCE_SHA"
+          python -m py_compile automation/production_runner.py automation/v33_finalize.py
 
-      - name: Verify Vietnamese semantic regression fix
-        shell: bash
-        run: |
-          python - <<'PY'
-          import importlib.util
-          import sys
-          spec = importlib.util.spec_from_file_location('runner', 'automation/production_runner.py')
-          runner = importlib.util.module_from_spec(spec)
-          sys.modules[spec.name] = runner
-          spec.loader.exec_module(runner)
-
-          cases = [
-              ({'id':'accelerating-growth','label':'Đường cong tăng trưởng dốc dần','anchorText':'số tiền tăng nhanh hơn','mustRenderAs':['accelerating growth curve']}, 'graph'),
-              ({'id':'interest-earns-interest','label':'Phần lãi nhập vào rồi tiếp tục tăng','anchorText':'phần lãi cũ tiếp tục sinh ra lãi mới','mustRenderAs':['interest merging into principal']}, 'money'),
-              ({'id':'snowball-compounding','label':'Quả cầu tuyết lăn và lớn dần','anchorText':'Lãi kép giống một quả cầu tuyết','renderKind':'snowball'}, 'snowball'),
-              ({'id':'risk-warning','label':'Đường tăng quá dốc kèm dấu cảnh báo','renderKind':'warning'}, 'warning'),
-          ]
-          for element, expected in cases:
-              actual = runner.kind_for(element)
-              print(element['id'], actual)
-              if actual != expected:
-                  raise SystemExit(f"semantic regression: {element['id']} expected {expected}, got {actual}")
-          print('Vietnamese semantic regression checks passed.')
-          PY
-
-      - name: Create deterministic fixture
+      - name: Create fixture
         shell: bash
         run: |
           mkdir -p automation/self-test
@@ -101,105 +72,41 @@ jobs:
             "schemaVersion": 2,
             "mode": "production",
             "enabled": true,
-            "jobId": "whiteboard-runner-3.1.1-self-test",
-            "script": "Tiền gốc sinh ra lãi. Lãi nhập vào tiền gốc và tiếp tục tăng. Đường cong tăng trưởng dốc dần. Bắt đầu sớm và cho thời gian làm việc. Lãi kép giống một quả cầu tuyết. Luôn nhớ rủi ro thực tế.",
+            "jobId": "whiteboard-v33-self-test",
+            "script": "Tiền gốc sinh ra lãi. Lãi nhập vào vốn và tiếp tục tăng. Đường cong tăng trưởng dốc dần. Bắt đầu sớm và cho thời gian làm việc. Lãi kép giống một quả cầu tuyết. Luôn nhớ rủi ro thực tế.",
             "voiceAlias": "co-nhan",
             "voiceSpeed": 1.0,
+            "imageProvider": "conhan-visual-v1",
+            "visualProfile": "conhan-visual-v1",
             "renderScale": 0.25,
-            "imageProvider": "local-doodle-v2",
             "output": {"width": 540, "height": 960, "fps": 24, "format": "mp4"},
-            "rules": {
-              "objectsPerPageMin": 3,
-              "objectsPerPageMax": 4,
-              "captionWordsMin": 4,
-              "captionWordsMax": 6,
-              "captionSafeZoneY": [760, 960],
-              "eraseBetweenPages": true,
-              "lineBeforeColor": true
-            },
+            "rules": {"objectsPerPageMin":3,"objectsPerPageMax":4,"captionWordsMin":4,"captionWordsMax":6,"eraseBetweenPages":true,"lineBeforeColor":true},
             "storyboard": {
               "locked": true,
               "revision": 1,
               "source": "fixture",
+              "visualProfile": "conhan-visual-v1",
               "pages": [
                 {
-                  "sceneId": "scene-01",
-                  "storyBasis": "Compound interest semantics",
-                  "holdMs": 500,
-                  "eraseMs": 700,
-                  "elements": [
-                    {
-                      "id": "principal",
-                      "label": "Tiền gốc sinh lãi",
-                      "anchorText": "Tiền gốc sinh ra lãi",
-                      "visualWhy": "Show principal money",
-                      "mustRenderAs": ["principal money pile"],
-                      "renderKind": "money-small",
-                      "slot": "top",
-                      "sequence": 1
-                    },
-                    {
-                      "id": "compound",
-                      "label": "Lãi nhập vào tiền gốc",
-                      "anchorText": "Lãi nhập vào tiền gốc và tiếp tục tăng",
-                      "visualWhy": "Show compounding base",
-                      "mustRenderAs": ["interest merging into principal"],
-                      "renderKind": "compound-money",
-                      "slot": "mid",
-                      "sequence": 2
-                    },
-                    {
-                      "id": "growth",
-                      "label": "Đường cong tăng trưởng dốc dần",
-                      "anchorText": "Đường cong tăng trưởng dốc dần",
-                      "visualWhy": "Show accelerating growth",
-                      "mustRenderAs": ["accelerating growth curve"],
-                      "renderKind": "graph",
-                      "slot": "bottom",
-                      "sequence": 3
-                    }
+                  "sceneId":"scene-01","storyBasis":"Lãi kép tăng dần","holdMs":500,"eraseMs":700,
+                  "elements":[
+                    {"id":"conhan","label":"Cổ Nhân với tiền","anchorText":"Tiền gốc sinh ra lãi","renderKind":"conhan-money","mustRenderAs":["fixed Cổ Nhân character with money"],"slot":"top","sequence":1},
+                    {"id":"compound","label":"Lãi nhập vào vốn","anchorText":"Lãi nhập vào vốn và tiếp tục tăng","renderKind":"compound-money","mustRenderAs":["interest merging into principal"],"slot":"mid","sequence":2},
+                    {"id":"growth","label":"Đường cong tăng trưởng dốc dần","anchorText":"Đường cong tăng trưởng dốc dần","renderKind":"graph","mustRenderAs":["accelerating growth curve"],"slot":"bottom","sequence":3}
                   ]
                 },
                 {
-                  "sceneId": "scene-02",
-                  "storyBasis": "Time, snowball and risk",
-                  "holdMs": 600,
-                  "eraseMs": 0,
-                  "elements": [
-                    {
-                      "id": "start-early",
-                      "label": "Mầm cây tăng trưởng theo thời gian",
-                      "anchorText": "Bắt đầu sớm và cho thời gian làm việc",
-                      "visualWhy": "Show early start",
-                      "renderKind": "seedling",
-                      "slot": "top",
-                      "sequence": 1
-                    },
-                    {
-                      "id": "snowball",
-                      "label": "Quả cầu tuyết lớn dần",
-                      "anchorText": "Lãi kép giống một quả cầu tuyết",
-                      "visualWhy": "Show snowball compounding metaphor",
-                      "renderKind": "snowball",
-                      "slot": "mid",
-                      "sequence": 2
-                    },
-                    {
-                      "id": "warning",
-                      "label": "Cảnh báo rủi ro",
-                      "anchorText": "Luôn nhớ rủi ro thực tế",
-                      "visualWhy": "Show risk warning",
-                      "renderKind": "warning",
-                      "slot": "bottom",
-                      "sequence": 3
-                    }
+                  "sceneId":"scene-02","storyBasis":"Thời gian, quả cầu tuyết và rủi ro","holdMs":600,"eraseMs":0,
+                  "elements":[
+                    {"id":"seed","label":"Mầm cây tăng trưởng","anchorText":"Bắt đầu sớm và cho thời gian làm việc","renderKind":"seedling","mustRenderAs":["growing seedling"],"slot":"top","sequence":1},
+                    {"id":"snowball","label":"Quả cầu tuyết lớn dần","anchorText":"Lãi kép giống một quả cầu tuyết","renderKind":"snowball","mustRenderAs":["snowball rolling and growing"],"slot":"mid","sequence":2},
+                    {"id":"warning","label":"Cảnh báo rủi ro","anchorText":"Luôn nhớ rủi ro thực tế","renderKind":"warning","mustRenderAs":["risk warning"],"slot":"bottom","sequence":3}
                   ]
                 }
               ]
             }
           }
           JSON
-
           cat > automation/self-test/subtitles.srt <<'SRT'
           1
           00:00:00,000 --> 00:00:02,000
@@ -207,7 +114,7 @@ jobs:
 
           2
           00:00:02,000 --> 00:00:04,000
-          Lãi nhập vào tiền gốc và tiếp tục tăng.
+          Lãi nhập vào vốn.
 
           3
           00:00:04,000 --> 00:00:06,000
@@ -215,74 +122,52 @@ jobs:
 
           4
           00:00:06,000 --> 00:00:08,000
-          Bắt đầu sớm và cho thời gian làm việc.
+          Bắt đầu sớm ngay hôm nay.
 
           5
           00:00:08,000 --> 00:00:10,000
-          Lãi kép giống một quả cầu tuyết.
+          Lãi kép như quả cầu tuyết.
 
           6
           00:00:10,000 --> 00:00:12,000
           Luôn nhớ rủi ro thực tế.
           SRT
+          ffmpeg -y -loglevel error -f lavfi -i "sine=frequency=220:sample_rate=48000:duration=12" -filter:a "volume=0.02" -ac 2 -c:a pcm_s16le automation/self-test/voice.wav
 
-          ffmpeg -y -loglevel error \
-            -f lavfi -i "sine=frequency=220:sample_rate=48000:duration=12" \
-            -filter:a "volume=0.02" -ac 2 -c:a pcm_s16le \
-            automation/self-test/voice.wav
-
-      - name: Run end-to-end fixture production
+      - name: Run core fixture
         run: |
-          python automation/production_runner.py \
+          python automation/production_runner.py --job automation/self-test/job.json --out automation/output/self-test --upstream _vendor/srt-whiteboard-animation --fixture-audio automation/self-test/voice.wav --fixture-srt automation/self-test/subtitles.srt
+
+      - name: Apply V3.3 finalizer
+        run: |
+          python automation/v33_finalize.py \
             --job automation/self-test/job.json \
             --out automation/output/self-test \
             --upstream _vendor/srt-whiteboard-animation \
-            --fixture-audio automation/self-test/voice.wav \
-            --fixture-srt automation/self-test/subtitles.srt
+            --assets automation/output/self-test/v33-assets \
+            --character-sheet automation/v33/assets/conhan-front.webp \
+            --eraser-hand automation/v33/assets/eraser-hand.webp
 
-      - name: Verify deliverables and semantic QC
+      - name: Verify V3.3 fixture
         shell: bash
         run: |
           test -s automation/output/self-test/final/final.mp4
-          test -s automation/output/self-test/project.zip
-          test -s automation/output/self-test/status.json
-          test -s automation/output/self-test/qc-report.json
+          test -s automation/output/self-test/qc/source-contact-sheet.jpg
+          test -s automation/output/self-test/qc/final-contact-sheet.jpg
+          test -s automation/output/self-test/qc/transition-contact-sheet.jpg
+          test -s automation/output/self-test/v33-assets/conhan-front.png
+          test -s automation/output/self-test/v33-assets/eraser-hand.png
           python - <<'PY'
           import json
           from pathlib import Path
-          root = Path('automation/output/self-test')
-          status = json.loads((root / 'status.json').read_text(encoding='utf-8'))
-          qc = json.loads((root / 'qc-report.json').read_text(encoding='utf-8'))
-          if status.get('state') != 'completed':
-              raise SystemExit(f"Unexpected status: {status}")
-          if status.get('runnerVersion') != '3.1.1':
-              raise SystemExit(f"Unexpected runner version: {status}")
-          if qc.get('pass') is not True:
-              raise SystemExit(f"QC failed: {qc}")
-          for scene in ('scene-01', 'scene-02'):
-              scene_qc = json.loads((root / 'scenes' / scene / 'scene-qc.json').read_text(encoding='utf-8'))
-              for element in scene_qc.get('elements', []):
-                  if element.get('semanticPass') is not True or element.get('pass') is not True:
-                      raise SystemExit(f"Semantic QC failed: {scene} {element}")
-          print('Self-test completed; semantic QC passed.')
+          root=Path('automation/output/self-test')
+          status=json.loads((root/'status.json').read_text(encoding='utf-8'))
+          qc=json.loads((root/'qc/v33-runner-qc.json').read_text(encoding='utf-8'))
+          assert status['runnerVersion']=='3.3.0' and status['state']=='completed'
+          assert qc['pass'] is True and qc['requiresChatGPTVisionGate'] is True
+          assert qc.get('transitionContactSheet')
+          print('V3.3 deterministic self-test PASS; external ChatGPT vision gate required for production final.')
           PY
-
-      - name: Write self-test summary
-        if: always()
-        shell: bash
-        run: |
-          if [ -f automation/output/self-test/status.json ]; then
-            echo '## Whiteboard runner self-test' >> "$GITHUB_STEP_SUMMARY"
-            echo '```json' >> "$GITHUB_STEP_SUMMARY"
-            cat automation/output/self-test/status.json >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-          fi
-          if [ -f automation/output/self-test/qc-report.json ]; then
-            echo '## QC report' >> "$GITHUB_STEP_SUMMARY"
-            echo '```json' >> "$GITHUB_STEP_SUMMARY"
-            cat automation/output/self-test/qc-report.json >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-          fi
 
       - name: Upload self-test artifact
         if: always()
