@@ -1,7 +1,55 @@
 {
+  "schemaVersion": 2,
+  "mode": "production",
   "enabled": true,
-  "jobId": "whiteboard-v2-voice-test-20260901-01",
-  "text": "Mỗi ngày tiến một bước nhỏ, bạn sẽ tạo nên một thay đổi lớn.",
+  "jobId": "whiteboard-production-smoke-20260901-01",
+  "script": "Học một kỹ năng mới bắt đầu bằng ba việc đơn giản: đọc để hiểu, luyện tập đều đặn, rồi kiểm tra tiến bộ của mình.",
   "voiceAlias": "co-nhan",
-  "speed": 1
+  "voiceSpeed": 1.0,
+  "renderScale": 0.5,
+  "output": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "format": "mp4"
+  },
+  "storyboard": {
+    "locked": true,
+    "revision": 1,
+    "source": "auto",
+    "pages": [
+      {
+        "sceneId": "scene-01",
+        "storyBasis": "Ba bước học một kỹ năng mới",
+        "holdMs": 800,
+        "eraseMs": 0,
+        "elements": [
+          {
+            "id": "book",
+            "label": "Quyển sách đang mở",
+            "anchorText": "đọc để hiểu",
+            "visualWhy": "Bắt đầu bằng việc tiếp thu kiến thức nền",
+            "slot": "top",
+            "sequence": 1
+          },
+          {
+            "id": "dumbbell",
+            "label": "Biểu tượng luyện tập",
+            "anchorText": "luyện tập đều đặn",
+            "visualWhy": "Kỹ năng cần được rèn bằng hành động lặp lại",
+            "slot": "mid",
+            "sequence": 2
+          },
+          {
+            "id": "graph",
+            "label": "Biểu đồ tiến bộ",
+            "anchorText": "kiểm tra tiến bộ",
+            "visualWhy": "Đo lường để biết mình đang tiến lên",
+            "slot": "bottom",
+            "sequence": 3
+          }
+        ]
+      }
+    ]
+  }
 }
