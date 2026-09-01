@@ -2,49 +2,91 @@
   "schemaVersion": 2,
   "mode": "production",
   "enabled": true,
-  "jobId": "whiteboard-production-smoke-20260901-01",
-  "script": "Học một kỹ năng mới bắt đầu bằng ba việc đơn giản: đọc để hiểu, luyện tập đều đặn, rồi kiểm tra tiến bộ của mình.",
+  "jobId": "whiteboard-production-v3-smoke-20260901-02",
+  "script": "Muốn học một kỹ năng mới, hãy bắt đầu bằng đọc để hiểu, ghi lại điều cốt lõi, rồi luyện tập một việc thật nhỏ. Sau đó, hãy lặp lại mỗi ngày, kiểm tra tiến bộ, sửa lỗi và tiếp tục cho đến khi thành thạo.",
   "voiceAlias": "co-nhan",
   "voiceSpeed": 1.0,
-  "renderScale": 0.5,
+  "renderScale": 0.35,
+  "imageProvider": "local-doodle-v2",
   "output": {
     "width": 1080,
     "height": 1920,
     "fps": 30,
     "format": "mp4"
   },
+  "rules": {
+    "objectsPerPageMin": 3,
+    "objectsPerPageMax": 4,
+    "captionWordsMin": 4,
+    "captionWordsMax": 6,
+    "captionSafeZoneY": [1520, 1920],
+    "eraseBetweenPages": true,
+    "lineBeforeColor": true
+  },
   "storyboard": {
     "locked": true,
-    "revision": 1,
+    "revision": 2,
     "source": "auto",
     "pages": [
       {
         "sceneId": "scene-01",
-        "storyBasis": "Ba bước học một kỹ năng mới",
-        "holdMs": 800,
-        "eraseMs": 0,
+        "storyBasis": "Bắt đầu học bằng hiểu, ghi lại và luyện tập nhỏ",
+        "holdMs": 600,
+        "eraseMs": 900,
         "elements": [
           {
             "id": "book",
             "label": "Quyển sách đang mở",
             "anchorText": "đọc để hiểu",
-            "visualWhy": "Bắt đầu bằng việc tiếp thu kiến thức nền",
+            "visualWhy": "Tiếp thu nền tảng trước khi thực hành",
             "slot": "top",
             "sequence": 1
           },
           {
-            "id": "dumbbell",
-            "label": "Biểu tượng luyện tập",
-            "anchorText": "luyện tập đều đặn",
-            "visualWhy": "Kỹ năng cần được rèn bằng hành động lặp lại",
+            "id": "checklist",
+            "label": "Sổ ghi chú điều cốt lõi",
+            "anchorText": "ghi lại điều cốt lõi",
+            "visualWhy": "Chắt lọc kiến thức thành điểm dễ nhớ",
             "slot": "mid",
             "sequence": 2
           },
           {
+            "id": "dumbbell",
+            "label": "Biểu tượng luyện tập nhỏ",
+            "anchorText": "luyện tập một việc thật nhỏ",
+            "visualWhy": "Biến kiến thức thành hành động vừa sức",
+            "slot": "bottom",
+            "sequence": 3
+          }
+        ]
+      },
+      {
+        "sceneId": "scene-02",
+        "storyBasis": "Lặp lại, đo tiến bộ và tiến tới thành thạo",
+        "holdMs": 800,
+        "eraseMs": 0,
+        "elements": [
+          {
+            "id": "calendar",
+            "label": "Lịch luyện tập mỗi ngày",
+            "anchorText": "lặp lại mỗi ngày",
+            "visualWhy": "Tạo nhịp luyện tập đều đặn",
+            "slot": "top",
+            "sequence": 1
+          },
+          {
             "id": "graph",
-            "label": "Biểu đồ tiến bộ",
+            "label": "Biểu đồ kiểm tra tiến bộ",
             "anchorText": "kiểm tra tiến bộ",
-            "visualWhy": "Đo lường để biết mình đang tiến lên",
+            "visualWhy": "Đo lường để nhận ra điểm cần sửa",
+            "slot": "mid",
+            "sequence": 2
+          },
+          {
+            "id": "target",
+            "label": "Mục tiêu thành thạo",
+            "anchorText": "cho đến khi thành thạo",
+            "visualWhy": "Giữ hướng đi rõ ràng đến kết quả cuối",
             "slot": "bottom",
             "sequence": 3
           }
