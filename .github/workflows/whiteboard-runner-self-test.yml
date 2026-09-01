@@ -63,7 +63,20 @@ jobs:
           test "$(sha256sum automation/v33_finalize.py | awk '{print $1}')" = "$V33_SOURCE_SHA"
           python -m py_compile automation/production_runner.py automation/v33_finalize.py
 
-      - name: Create fixture
+      - name: Canonicalize V3.3 image assets to PNG
+        shell: bash
+        run: |
+          mkdir -p automation/v33/runtime-assets
+          ffmpeg -y -loglevel error -i automation/v33/assets/conhan-front.webp -frames:v 1 automation/v33/runtime-assets/conhan-front.png
+          ffmpeg -y -loglevel error -i automation/v33/assets/eraser-hand.webp -frames:v 1 automation/v33/runtime-assets/eraser-hand.png
+          python - <<'PY'
+          from PIL import Image
+          for p in ['automation/v33/runtime-assets/conhan-front.png','automation/v33/runtime-assets/eraser-hand.png']:
+              im=Image.open(p).convert('RGBA')
+              print(p, im.size, im.mode)
+          PY
+
+      - name: Create deterministic fixture
         shell: bash
         run: |
           mkdir -p automation/self-test
@@ -90,17 +103,17 @@ jobs:
                 {
                   "sceneId":"scene-01","storyBasis":"Lãi kép tăng dần","holdMs":500,"eraseMs":700,
                   "elements":[
-                    {"id":"conhan","label":"Cổ Nhân với tiền","narrativeRole":"Mở ý bằng nhân vật cố định và tiền gốc","anchorText":"Tiền gốc sinh ra lãi","visualWhy":"Voice đang nói trực tiếp về tiền gốc sinh lãi, nên dùng Cổ Nhân tương tác với tiền để mở cảnh.","renderKind":"conhan-money","mustRenderAs":["fixed Cổ Nhân character with money"],"slot":"top","sequence":1},
-                    {"id":"compound","label":"Lãi nhập vào vốn","narrativeRole":"Giải thích cơ chế lãi nhập gốc","anchorText":"Lãi nhập vào vốn và tiếp tục tăng","visualWhy":"Voice mô tả lãi được nhập lại vào vốn, nên phải thể hiện hai phần tiền hợp nhất và tiếp tục lớn lên.","renderKind":"compound-money","mustRenderAs":["interest merging into principal"],"slot":"mid","sequence":2},
-                    {"id":"growth","label":"Đường cong tăng trưởng dốc dần","narrativeRole":"Cho thấy tốc độ tăng nhanh dần","anchorText":"Đường cong tăng trưởng dốc dần","visualWhy":"Voice gọi trực tiếp đường cong tăng trưởng, nên visual phải là biểu đồ tăng tốc chứ không phải vật thể thay thế.","renderKind":"graph","mustRenderAs":["accelerating growth curve"],"slot":"bottom","sequence":3}
+                    {"id":"conhan","label":"Cổ Nhân với tiền","narrativeRole":"Mở ý bằng nhân vật cố định và tiền gốc","anchorText":"Tiền gốc sinh ra lãi","visualWhy":"Voice nói về tiền gốc sinh lãi, dùng Cổ Nhân tương tác với tiền.","renderKind":"conhan-money","mustRenderAs":["fixed Cổ Nhân character with money"],"slot":"top","sequence":1},
+                    {"id":"compound","label":"Lãi nhập vào vốn","narrativeRole":"Giải thích cơ chế lãi nhập gốc","anchorText":"Lãi nhập vào vốn và tiếp tục tăng","visualWhy":"Hai phần tiền phải hợp nhất rồi tiếp tục lớn lên.","renderKind":"compound-money","mustRenderAs":["interest merging into principal"],"slot":"mid","sequence":2},
+                    {"id":"growth","label":"Đường cong tăng trưởng dốc dần","narrativeRole":"Cho thấy tốc độ tăng nhanh dần","anchorText":"Đường cong tăng trưởng dốc dần","visualWhy":"Voice gọi trực tiếp đường cong tăng trưởng.","renderKind":"graph","mustRenderAs":["accelerating growth curve"],"slot":"bottom","sequence":3}
                   ]
                 },
                 {
                   "sceneId":"scene-02","storyBasis":"Thời gian, quả cầu tuyết và rủi ro","holdMs":600,"eraseMs":0,
                   "elements":[
-                    {"id":"seed","label":"Mầm cây tăng trưởng","narrativeRole":"Minh họa lợi thế bắt đầu sớm","anchorText":"Bắt đầu sớm và cho thời gian làm việc","visualWhy":"Mầm cây phát triển theo thời gian là ẩn dụ trực quan cho việc bắt đầu sớm và kiên nhẫn.","renderKind":"seedling","mustRenderAs":["growing seedling"],"slot":"top","sequence":1},
-                    {"id":"snowball","label":"Quả cầu tuyết lớn dần","narrativeRole":"Minh họa phép ẩn dụ lãi kép","anchorText":"Lãi kép giống một quả cầu tuyết","visualWhy":"Voice nêu trực tiếp phép ẩn dụ quả cầu tuyết, nên phải vẽ quả cầu tuyết lăn và lớn dần.","renderKind":"snowball","mustRenderAs":["snowball rolling and growing"],"slot":"mid","sequence":2},
-                    {"id":"warning","label":"Cảnh báo rủi ro","narrativeRole":"Chốt bằng lưu ý rủi ro","anchorText":"Luôn nhớ rủi ro thực tế","visualWhy":"Voice đang cảnh báo, nên visual phải có dấu hiệu rủi ro rõ ràng và không thay bằng biểu tượng tăng trưởng.","renderKind":"warning","mustRenderAs":["risk warning"],"slot":"bottom","sequence":3}
+                    {"id":"seed","label":"Mầm cây tăng trưởng","narrativeRole":"Minh họa lợi thế bắt đầu sớm","anchorText":"Bắt đầu sớm và cho thời gian làm việc","visualWhy":"Mầm cây phát triển là ẩn dụ cho thời gian.","renderKind":"seedling","mustRenderAs":["growing seedling"],"slot":"top","sequence":1},
+                    {"id":"snowball","label":"Quả cầu tuyết lớn dần","narrativeRole":"Minh họa phép ẩn dụ lãi kép","anchorText":"Lãi kép giống một quả cầu tuyết","visualWhy":"Voice nêu trực tiếp quả cầu tuyết.","renderKind":"snowball","mustRenderAs":["snowball rolling and growing"],"slot":"mid","sequence":2},
+                    {"id":"warning","label":"Cảnh báo rủi ro","narrativeRole":"Chốt bằng lưu ý rủi ro","anchorText":"Luôn nhớ rủi ro thực tế","visualWhy":"Voice cảnh báo nên phải có dấu hiệu rủi ro rõ.","renderKind":"warning","mustRenderAs":["risk warning"],"slot":"bottom","sequence":3}
                   ]
                 }
               ]
@@ -136,7 +149,12 @@ jobs:
 
       - name: Run core fixture
         run: |
-          python automation/production_runner.py --job automation/self-test/job.json --out automation/output/self-test --upstream _vendor/srt-whiteboard-animation --fixture-audio automation/self-test/voice.wav --fixture-srt automation/self-test/subtitles.srt
+          python automation/production_runner.py \
+            --job automation/self-test/job.json \
+            --out automation/output/self-test \
+            --upstream _vendor/srt-whiteboard-animation \
+            --fixture-audio automation/self-test/voice.wav \
+            --fixture-srt automation/self-test/subtitles.srt
 
       - name: Apply V3.3 finalizer
         run: |
@@ -145,8 +163,8 @@ jobs:
             --out automation/output/self-test \
             --upstream _vendor/srt-whiteboard-animation \
             --assets automation/output/self-test/v33-assets \
-            --character-sheet automation/v33/assets/conhan-front.webp \
-            --eraser-hand automation/v33/assets/eraser-hand.webp
+            --character-sheet automation/v33/runtime-assets/conhan-front.png \
+            --eraser-hand automation/v33/runtime-assets/eraser-hand.png
 
       - name: Verify V3.3 fixture
         shell: bash
