@@ -56,16 +56,39 @@ jobs:
           sudo apt-get install -y -qq ffmpeg
           python -m pip install --disable-pip-version-check -r automation/requirements-production.txt
 
-      - name: Restore and validate production runner
+      - name: Restore and validate production runner 3.1.1
         shell: bash
         run: |
           PAYLOAD_SHA=$(cat automation/runner_parts/part-*.b64 | sha256sum | awk '{print $1}')
-          test "$PAYLOAD_SHA" = "6697073e702b04d89045e9173444fc5fe64e0875750eccf0835d51300191db60"
+          test "$PAYLOAD_SHA" = "0f46e824a6955c11b91ab9d64b95b10fc0d6e971f1ff7099ca446fa0f9de9113"
           cat automation/runner_parts/part-*.b64 | base64 -d | gzip -d > automation/production_runner.py
           SOURCE_SHA=$(sha256sum automation/production_runner.py | awk '{print $1}')
-          test "$SOURCE_SHA" = "21713423bfbfe4bf983e16d871bf456d4fc32968d81c946c5d0091a03f0e5d16"
+          test "$SOURCE_SHA" = "1c05f173076a8900c472b0f0f93fd3959461a6db8623ca5fb019d0e931506527"
           python -m py_compile automation/production_runner.py
-          echo "Production runner SHA-256: $SOURCE_SHA"
+          echo "Production runner 3.1.1 SHA-256: $SOURCE_SHA"
+
+      - name: Verify Vietnamese semantic regression fix
+        shell: bash
+        run: |
+          python - <<'PY'
+          import importlib.util
+          spec = importlib.util.spec_from_file_location('runner', 'automation/production_runner.py')
+          runner = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(runner)
+
+          cases = [
+              ({'id':'accelerating-growth','label':'Đường cong tăng trưởng dốc dần','anchorText':'số tiền tăng nhanh hơn','mustRenderAs':['accelerating growth curve']}, 'graph'),
+              ({'id':'interest-earns-interest','label':'Phần lãi nhập vào rồi tiếp tục tăng','anchorText':'phần lãi cũ tiếp tục sinh ra lãi mới','mustRenderAs':['interest merging into principal']}, 'money'),
+              ({'id':'snowball-compounding','label':'Quả cầu tuyết lăn và lớn dần','anchorText':'Lãi kép giống một quả cầu tuyết','renderKind':'snowball'}, 'snowball'),
+              ({'id':'risk-warning','label':'Đường tăng quá dốc kèm dấu cảnh báo','renderKind':'warning'}, 'warning'),
+          ]
+          for element, expected in cases:
+              actual = runner.kind_for(element)
+              print(element['id'], actual)
+              if actual != expected:
+                  raise SystemExit(f"semantic regression: {element['id']} expected {expected}, got {actual}")
+          print('Vietnamese semantic regression checks passed.')
+          PY
 
       - name: Create deterministic fixture
         shell: bash
@@ -76,18 +99,13 @@ jobs:
             "schemaVersion": 2,
             "mode": "production",
             "enabled": true,
-            "jobId": "whiteboard-runner-self-test",
-            "script": "Đọc để hiểu nền tảng. Ghi lại điều cốt lõi. Luyện tập một việc nhỏ. Lặp lại đều mỗi ngày. Kiểm tra tiến bộ thường xuyên. Tiếp tục đến khi thành thạo.",
+            "jobId": "whiteboard-runner-3.1.1-self-test",
+            "script": "Tiền gốc sinh ra lãi. Lãi nhập vào tiền gốc và tiếp tục tăng. Đường cong tăng trưởng dốc dần. Bắt đầu sớm và cho thời gian làm việc. Lãi kép giống một quả cầu tuyết. Luôn nhớ rủi ro thực tế.",
             "voiceAlias": "co-nhan",
             "voiceSpeed": 1.0,
             "renderScale": 0.25,
             "imageProvider": "local-doodle-v2",
-            "output": {
-              "width": 540,
-              "height": 960,
-              "fps": 24,
-              "format": "mp4"
-            },
+            "output": {"width": 540, "height": 960, "fps": 24, "format": "mp4"},
             "rules": {
               "objectsPerPageMin": 3,
               "objectsPerPageMax": 4,
@@ -104,31 +122,37 @@ jobs:
               "pages": [
                 {
                   "sceneId": "scene-01",
-                  "storyBasis": "Hiểu, ghi lại và luyện tập nhỏ",
+                  "storyBasis": "Compound interest semantics",
                   "holdMs": 500,
                   "eraseMs": 700,
                   "elements": [
                     {
-                      "id": "book",
-                      "label": "Quyển sách đang mở",
-                      "anchorText": "Đọc để hiểu nền tảng",
-                      "visualWhy": "Tiếp thu kiến thức nền",
+                      "id": "principal",
+                      "label": "Tiền gốc sinh lãi",
+                      "anchorText": "Tiền gốc sinh ra lãi",
+                      "visualWhy": "Show principal money",
+                      "mustRenderAs": ["principal money pile"],
+                      "renderKind": "money-small",
                       "slot": "top",
                       "sequence": 1
                     },
                     {
-                      "id": "checklist",
-                      "label": "Sổ ghi chú",
-                      "anchorText": "Ghi lại điều cốt lõi",
-                      "visualWhy": "Chắt lọc điều cần nhớ",
+                      "id": "compound",
+                      "label": "Lãi nhập vào tiền gốc",
+                      "anchorText": "Lãi nhập vào tiền gốc và tiếp tục tăng",
+                      "visualWhy": "Show compounding base",
+                      "mustRenderAs": ["interest merging into principal"],
+                      "renderKind": "compound-money",
                       "slot": "mid",
                       "sequence": 2
                     },
                     {
-                      "id": "dumbbell",
-                      "label": "Biểu tượng luyện tập",
-                      "anchorText": "Luyện tập một việc nhỏ",
-                      "visualWhy": "Biến hiểu biết thành hành động",
+                      "id": "growth",
+                      "label": "Đường cong tăng trưởng dốc dần",
+                      "anchorText": "Đường cong tăng trưởng dốc dần",
+                      "visualWhy": "Show accelerating growth",
+                      "mustRenderAs": ["accelerating growth curve"],
+                      "renderKind": "graph",
                       "slot": "bottom",
                       "sequence": 3
                     }
@@ -136,31 +160,34 @@ jobs:
                 },
                 {
                   "sceneId": "scene-02",
-                  "storyBasis": "Lặp lại, đo tiến bộ và thành thạo",
+                  "storyBasis": "Time, snowball and risk",
                   "holdMs": 600,
                   "eraseMs": 0,
                   "elements": [
                     {
-                      "id": "calendar",
-                      "label": "Lịch luyện tập",
-                      "anchorText": "Lặp lại đều mỗi ngày",
-                      "visualWhy": "Tạo nhịp rèn luyện ổn định",
+                      "id": "start-early",
+                      "label": "Mầm cây tăng trưởng theo thời gian",
+                      "anchorText": "Bắt đầu sớm và cho thời gian làm việc",
+                      "visualWhy": "Show early start",
+                      "renderKind": "seedling",
                       "slot": "top",
                       "sequence": 1
                     },
                     {
-                      "id": "graph",
-                      "label": "Biểu đồ tiến bộ",
-                      "anchorText": "Kiểm tra tiến bộ thường xuyên",
-                      "visualWhy": "Nhìn thấy điểm cần điều chỉnh",
+                      "id": "snowball",
+                      "label": "Quả cầu tuyết lớn dần",
+                      "anchorText": "Lãi kép giống một quả cầu tuyết",
+                      "visualWhy": "Show snowball compounding metaphor",
+                      "renderKind": "snowball",
                       "slot": "mid",
                       "sequence": 2
                     },
                     {
-                      "id": "target",
-                      "label": "Mục tiêu thành thạo",
-                      "anchorText": "Tiếp tục đến khi thành thạo",
-                      "visualWhy": "Giữ hướng đi đến kết quả cuối",
+                      "id": "warning",
+                      "label": "Cảnh báo rủi ro",
+                      "anchorText": "Luôn nhớ rủi ro thực tế",
+                      "visualWhy": "Show risk warning",
+                      "renderKind": "warning",
                       "slot": "bottom",
                       "sequence": 3
                     }
@@ -174,27 +201,27 @@ jobs:
           cat > automation/self-test/subtitles.srt <<'SRT'
           1
           00:00:00,000 --> 00:00:02,000
-          Đọc để hiểu nền tảng.
+          Tiền gốc sinh ra lãi.
 
           2
           00:00:02,000 --> 00:00:04,000
-          Ghi lại điều cốt lõi.
+          Lãi nhập vào tiền gốc và tiếp tục tăng.
 
           3
           00:00:04,000 --> 00:00:06,000
-          Luyện tập một việc nhỏ.
+          Đường cong tăng trưởng dốc dần.
 
           4
           00:00:06,000 --> 00:00:08,000
-          Lặp lại đều mỗi ngày.
+          Bắt đầu sớm và cho thời gian làm việc.
 
           5
           00:00:08,000 --> 00:00:10,000
-          Kiểm tra tiến bộ thường xuyên.
+          Lãi kép giống một quả cầu tuyết.
 
           6
           00:00:10,000 --> 00:00:12,000
-          Tiếp tục đến khi thành thạo.
+          Luôn nhớ rủi ro thực tế.
           SRT
 
           ffmpeg -y -loglevel error \
@@ -211,7 +238,7 @@ jobs:
             --fixture-audio automation/self-test/voice.wav \
             --fixture-srt automation/self-test/subtitles.srt
 
-      - name: Verify deliverables
+      - name: Verify deliverables and semantic QC
         shell: bash
         run: |
           test -s automation/output/self-test/final/final.mp4
@@ -221,15 +248,21 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
-
           root = Path('automation/output/self-test')
           status = json.loads((root / 'status.json').read_text(encoding='utf-8'))
           qc = json.loads((root / 'qc-report.json').read_text(encoding='utf-8'))
           if status.get('state') != 'completed':
               raise SystemExit(f"Unexpected status: {status}")
+          if status.get('runnerVersion') != '3.1.1':
+              raise SystemExit(f"Unexpected runner version: {status}")
           if qc.get('pass') is not True:
               raise SystemExit(f"QC failed: {qc}")
-          print('Self-test completed and QC passed.')
+          for scene in ('scene-01', 'scene-02'):
+              scene_qc = json.loads((root / 'scenes' / scene / 'scene-qc.json').read_text(encoding='utf-8'))
+              for element in scene_qc.get('elements', []):
+                  if element.get('semanticPass') is not True or element.get('pass') is not True:
+                      raise SystemExit(f"Semantic QC failed: {scene} {element}")
+          print('Self-test completed; semantic QC passed.')
           PY
 
       - name: Write self-test summary
