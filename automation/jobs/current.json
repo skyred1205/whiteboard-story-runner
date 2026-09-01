@@ -1,7 +1,7 @@
 {
   "enabled": true,
-  "jobId": "whiteboard-3s-4scene-ky-nang-20260901-1212",
-  "text": "Chia nhỏ. Luyện đều. Nhận góp ý. Lặp lại.",
+  "jobId": "whiteboard-v2-voice-test-20260901-01",
+  "text": "Mỗi ngày tiến một bước nhỏ, bạn sẽ tạo nên một thay đổi lớn.",
   "voiceAlias": "co-nhan",
-  "speed": 1.5
+  "speed": 1
 }
