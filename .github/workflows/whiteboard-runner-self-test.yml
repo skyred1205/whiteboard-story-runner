@@ -60,10 +60,10 @@ jobs:
         shell: bash
         run: |
           PAYLOAD_SHA=$(cat automation/runner_parts/part-*.b64 | sha256sum | awk '{print $1}')
-          test "$PAYLOAD_SHA" = "a1ed8445187a922e7f7ed2c93229da9fcbe63e9cb176845123ca0460f693557a"
+          test "$PAYLOAD_SHA" = "6697073e702b04d89045e9173444fc5fe64e0875750eccf0835d51300191db60"
           cat automation/runner_parts/part-*.b64 | base64 -d | gzip -d > automation/production_runner.py
           SOURCE_SHA=$(sha256sum automation/production_runner.py | awk '{print $1}')
-          test "$SOURCE_SHA" = "4f578762c422fd165597d95077e8e47eb00b9697e9844b7669fd70e2b117cc38"
+          test "$SOURCE_SHA" = "21713423bfbfe4bf983e16d871bf456d4fc32968d81c946c5d0091a03f0e5d16"
           python -m py_compile automation/production_runner.py
           echo "Production runner SHA-256: $SOURCE_SHA"
 
