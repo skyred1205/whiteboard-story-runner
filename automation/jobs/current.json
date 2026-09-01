@@ -2,12 +2,14 @@
   "schemaVersion": 2,
   "mode": "production",
   "enabled": true,
-  "jobId": "whiteboard-production-v3.1-live-preflight-20260901-03",
-  "script": "Muốn học một kỹ năng mới, hãy bắt đầu bằng đọc để hiểu, ghi lại điều cốt lõi, rồi luyện tập một việc thật nhỏ. Sau đó, hãy lặp lại mỗi ngày, kiểm tra tiến bộ, sửa lỗi và tiếp tục cho đến khi thành thạo.",
+  "jobId": "compound-interest-60s-20260901-1852",
+  "script": "Vì sao lãi kép được gọi là một trong những lực mạnh nhất của tài chính? Vì tiền không chỉ sinh lãi, mà phần lãi cũ tiếp tục sinh ra lãi mới. Giả sử bạn có 100 triệu đồng, tăng 8% mỗi năm và không rút ra. Năm đầu, bạn có thêm 8 triệu. Năm sau, mức tăng được tính trên cả 108 triệu, nên số tiền tăng nhanh hơn. Nếu giữ nguyên giả định này, sau 10 năm, 100 triệu thành khoảng 216 triệu. Sau 20 năm, khoảng 466 triệu. Sau 30 năm, con số vượt 1 tỷ đồng, dù bạn không bỏ thêm tiền. Bí mật ở đây không phải là tìm một mức lợi nhuận thật cao. Đó là bắt đầu sớm, duy trì đều, và cho thời gian làm việc. Lãi kép giống một quả cầu tuyết: lúc đầu nhỏ, nhưng càng lăn lâu càng lớn nhanh. Đây chỉ là ví dụ toán học; thực tế còn có rủi ro, thuế và phí. Nhưng nguyên tắc vẫn rất rõ: thời gian là nhiên liệu mạnh nhất của lãi kép.",
   "voiceAlias": "co-nhan",
   "voiceSpeed": 1.0,
-  "renderScale": 0.35,
+  "renderScale": 0.5,
   "imageProvider": "local-doodle-v2",
+  "visualProfile": "conhan-visual-v1",
+  "rulesetVersion": "v3.3",
   "output": {
     "width": 1080,
     "height": 1920,
@@ -19,76 +21,210 @@
     "objectsPerPageMax": 4,
     "captionWordsMin": 4,
     "captionWordsMax": 6,
+    "captionSingleLine": true,
+    "captionAccent": "orange-outline",
     "captionSafeZoneY": [1520, 1920],
     "eraseBetweenPages": true,
-    "lineBeforeColor": true
+    "lineBeforeColor": true,
+    "layoutConsistency": true
   },
   "storyboard": {
     "locked": true,
-    "revision": 2,
+    "revision": 1,
     "source": "auto",
+    "visualProfile": "conhan-visual-v1",
+    "captionPolicy": {
+      "singleLine": true,
+      "accent": "orange-outline"
+    },
     "pages": [
       {
         "sceneId": "scene-01",
-        "storyBasis": "Bắt đầu học bằng hiểu, ghi lại và luyện tập nhỏ",
-        "holdMs": 600,
-        "eraseMs": 900,
+        "storyBasis": "Hook và bản chất của lãi kép: tiền sinh lãi rồi lãi tiếp tục sinh lãi",
+        "layoutProfile": "grid-4",
+        "contentArea": {"x1": 110, "y1": 120, "x2": 970, "y2": 1450},
+        "holdMs": 550,
+        "eraseMs": 1000,
         "elements": [
           {
-            "id": "book",
-            "label": "Quyển sách đang mở",
-            "anchorText": "đọc để hiểu",
-            "visualWhy": "Tiếp thu nền tảng trước khi thực hành",
+            "id": "conhan-explain-coins",
+            "label": "Nhân vật Cổ Nhân giải thích bên cạnh tiền",
+            "anchorText": "lãi kép được gọi là một trong những lực mạnh nhất của tài chính",
+            "visualWhy": "Mở video bằng nhân vật nhận diện và chủ đề tài chính",
+            "mustRenderAs": ["main character", "coin stack"],
+            "forbiddenSubstitutions": ["generic speaker only", "text title"],
+            "slot": "tl",
+            "sequence": 1
+          },
+          {
+            "id": "principal-earns-interest",
+            "label": "Chồng tiền gốc sinh thêm một cụm tiền nhỏ",
+            "anchorText": "tiền không chỉ sinh lãi",
+            "visualWhy": "Biểu đạt trực tiếp tiền gốc tạo ra phần lãi",
+            "mustRenderAs": ["principal money pile", "new smaller coin pile"],
+            "forbiddenSubstitutions": ["character only"],
+            "slot": "tr",
+            "sequence": 2
+          },
+          {
+            "id": "interest-earns-interest",
+            "label": "Phần lãi nhập vào khối tiền rồi tiếp tục tăng",
+            "anchorText": "phần lãi cũ tiếp tục sinh ra lãi mới",
+            "visualWhy": "Thể hiện cơ chế cốt lõi của lãi kép",
+            "mustRenderAs": ["interest merging into principal", "growing money pile"],
+            "forbiddenSubstitutions": ["flat coin icon"],
+            "slot": "bl",
+            "sequence": 3
+          },
+          {
+            "id": "starting-capital-growth",
+            "label": "Một khối tiền ban đầu cạnh đường tăng trưởng đi lên",
+            "anchorText": "100 triệu đồng, tăng 8% mỗi năm và không rút ra",
+            "visualWhy": "Đặt giả định ví dụ mà không đưa chữ hoặc số vào ảnh nguồn",
+            "mustRenderAs": ["banknote stack", "upward growth path"],
+            "forbiddenSubstitutions": ["written numbers", "percentage text", "logo"],
+            "slot": "br",
+            "sequence": 4
+          }
+        ]
+      },
+      {
+        "sceneId": "scene-02",
+        "storyBasis": "Cơ chế tăng tốc: lãi năm trước trở thành một phần cơ sở sinh lãi năm sau",
+        "layoutProfile": "stack-3",
+        "contentArea": {"x1": 110, "y1": 120, "x2": 970, "y2": 1450},
+        "holdMs": 550,
+        "eraseMs": 1000,
+        "elements": [
+          {
+            "id": "first-year-interest",
+            "label": "Khối tiền gốc và phần tiền lãi mới xuất hiện",
+            "anchorText": "Năm đầu, bạn có thêm 8 triệu",
+            "visualWhy": "Minh họa phần lãi đầu tiên tách ra rõ ràng",
+            "mustRenderAs": ["main money pile", "smaller earned money pile"],
+            "forbiddenSubstitutions": ["written number eight", "text label"],
             "slot": "top",
             "sequence": 1
           },
           {
-            "id": "checklist",
-            "label": "Sổ ghi chú điều cốt lõi",
-            "anchorText": "ghi lại điều cốt lõi",
-            "visualWhy": "Chắt lọc kiến thức thành điểm dễ nhớ",
+            "id": "larger-base-next-year",
+            "label": "Phần lãi nhập vào tiền gốc thành khối lớn hơn",
+            "anchorText": "mức tăng được tính trên cả 108 triệu",
+            "visualWhy": "Cho thấy cơ sở tính tăng trưởng đã lớn hơn năm trước",
+            "mustRenderAs": ["merged larger money pile", "compound base"],
+            "forbiddenSubstitutions": ["written number 108", "character filler"],
             "slot": "mid",
             "sequence": 2
           },
           {
-            "id": "dumbbell",
-            "label": "Biểu tượng luyện tập nhỏ",
-            "anchorText": "luyện tập một việc thật nhỏ",
-            "visualWhy": "Biến kiến thức thành hành động vừa sức",
+            "id": "accelerating-growth",
+            "label": "Đường cong tăng trưởng dốc dần cùng chồng tiền lớn lên",
+            "anchorText": "số tiền tăng nhanh hơn",
+            "visualWhy": "Biểu đạt tăng trưởng gia tốc của lãi kép",
+            "mustRenderAs": ["accelerating growth curve", "progressively larger money stack"],
+            "forbiddenSubstitutions": ["flat arrow only"],
             "slot": "bottom",
             "sequence": 3
           }
         ]
       },
       {
-        "sceneId": "scene-02",
-        "storyBasis": "Lặp lại, đo tiến bộ và tiến tới thành thạo",
+        "sceneId": "scene-03",
+        "storyBasis": "Sức mạnh của thời gian qua ba mốc dài hạn trong ví dụ giả định",
+        "layoutProfile": "grid-4",
+        "contentArea": {"x1": 110, "y1": 120, "x2": 970, "y2": 1450},
+        "holdMs": 550,
+        "eraseMs": 1000,
+        "elements": [
+          {
+            "id": "ten-year-growth",
+            "label": "Lịch thời gian cạnh chồng tiền cỡ vừa",
+            "anchorText": "sau 10 năm, 100 triệu thành khoảng 216 triệu",
+            "visualWhy": "Mốc đầu tiên cho thấy tiền đã hơn gấp đôi trong giả định",
+            "mustRenderAs": ["calendar pages", "medium money stack"],
+            "forbiddenSubstitutions": ["written 10", "written 216"],
+            "slot": "tl",
+            "sequence": 1
+          },
+          {
+            "id": "twenty-year-growth",
+            "label": "Lịch dày hơn cạnh chồng tiền lớn",
+            "anchorText": "Sau 20 năm, khoảng 466 triệu",
+            "visualWhy": "Mốc thứ hai làm rõ tăng trưởng ngày càng mạnh",
+            "mustRenderAs": ["longer calendar progression", "large money stack"],
+            "forbiddenSubstitutions": ["written 20", "written 466"],
+            "slot": "tr",
+            "sequence": 2
+          },
+          {
+            "id": "thirty-year-growth",
+            "label": "Dòng thời gian dài cạnh khối tiền rất lớn",
+            "anchorText": "Sau 30 năm, con số vượt 1 tỷ đồng",
+            "visualWhy": "Mốc thứ ba tạo cao trào thị giác về sức mạnh thời gian",
+            "mustRenderAs": ["long time progression", "very large money pile"],
+            "forbiddenSubstitutions": ["written 30", "written one billion"],
+            "slot": "bl",
+            "sequence": 3
+          },
+          {
+            "id": "no-extra-contribution",
+            "label": "Ví tiền đóng cạnh khối tiền vẫn tiếp tục lớn lên",
+            "anchorText": "dù bạn không bỏ thêm tiền",
+            "visualWhy": "Nhấn mạnh ví dụ này không tính thêm khoản đóng góp mới",
+            "mustRenderAs": ["closed wallet", "existing money continuing to grow"],
+            "forbiddenSubstitutions": ["hand adding coins"],
+            "slot": "br",
+            "sequence": 4
+          }
+        ]
+      },
+      {
+        "sceneId": "scene-04",
+        "storyBasis": "Bài học: không chạy theo lợi nhuận cực cao; bắt đầu sớm, duy trì và để thời gian tạo hiệu ứng lãi kép",
+        "layoutProfile": "grid-4",
+        "contentArea": {"x1": 110, "y1": 120, "x2": 970, "y2": 1450},
         "holdMs": 800,
         "eraseMs": 0,
         "elements": [
           {
-            "id": "calendar",
-            "label": "Lịch luyện tập mỗi ngày",
-            "anchorText": "lặp lại mỗi ngày",
-            "visualWhy": "Tạo nhịp luyện tập đều đặn",
-            "slot": "top",
+            "id": "avoid-chasing-high-return",
+            "label": "Đường tăng quá dốc kèm dấu cảnh báo",
+            "anchorText": "không phải là tìm một mức lợi nhuận thật cao",
+            "visualWhy": "Phân biệt nguyên tắc lãi kép với việc chạy theo lợi nhuận cực đoan",
+            "mustRenderAs": ["steep risky growth path", "warning cue"],
+            "forbiddenSubstitutions": ["celebration", "guaranteed profit symbol"],
+            "slot": "tl",
             "sequence": 1
           },
           {
-            "id": "graph",
-            "label": "Biểu đồ kiểm tra tiến bộ",
-            "anchorText": "kiểm tra tiến bộ",
-            "visualWhy": "Đo lường để nhận ra điểm cần sửa",
-            "slot": "mid",
+            "id": "start-early-consistent",
+            "label": "Mầm cây nhỏ cạnh đồng hồ và chuỗi lịch đều đặn",
+            "anchorText": "bắt đầu sớm, duy trì đều, và cho thời gian làm việc",
+            "visualWhy": "Biểu đạt ba hành vi nền tảng: sớm, đều, lâu",
+            "mustRenderAs": ["small seedling", "clock", "calendar progression"],
+            "forbiddenSubstitutions": ["rocket", "instant wealth"],
+            "slot": "tr",
             "sequence": 2
           },
           {
-            "id": "target",
-            "label": "Mục tiêu thành thạo",
-            "anchorText": "cho đến khi thành thạo",
-            "visualWhy": "Giữ hướng đi rõ ràng đến kết quả cuối",
-            "slot": "bottom",
+            "id": "snowball-compounding",
+            "label": "Quả cầu tuyết lăn và lớn dần theo quãng đường",
+            "anchorText": "Lãi kép giống một quả cầu tuyết",
+            "visualWhy": "Ẩn dụ trực quan cho quá trình tăng chậm lúc đầu rồi nhanh dần",
+            "mustRenderAs": ["rolling snowball growing larger"],
+            "forbiddenSubstitutions": ["static snowflake"],
+            "slot": "bl",
             "sequence": 3
+          },
+          {
+            "id": "conhan-time-and-risk",
+            "label": "Nhân vật Cổ Nhân cạnh đồng hồ cát và khiên cảnh báo nhỏ",
+            "anchorText": "thực tế còn có rủi ro, thuế và phí. Nhưng nguyên tắc vẫn rất rõ: thời gian là nhiên liệu mạnh nhất của lãi kép",
+            "visualWhy": "Kết video bằng nhân vật nhận diện, vừa nhắc rủi ro vừa chốt vai trò của thời gian",
+            "mustRenderAs": ["main character", "hourglass", "small risk shield"],
+            "forbiddenSubstitutions": ["guaranteed wealth", "text disclaimer"],
+            "slot": "br",
+            "sequence": 4
           }
         ]
       }
