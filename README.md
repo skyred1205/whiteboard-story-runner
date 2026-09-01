@@ -54,7 +54,15 @@ The project bundle also includes the script, LucyLab audio/SRT, scene sources, a
 
 ## Scene source provider
 
-The working baseline provider is `local-doodle-v2`. It deterministically creates clean whiteboard source scenes from the locked storyboard and is suitable for end-to-end production and regression testing. A future character-consistent generative image provider can be added behind the same provider contract without changing the Skill-to-runner architecture.
+The working baseline provider is `local-doodle-v2`. It deterministically creates clean whiteboard source scenes from the locked storyboard and is suitable for end-to-end production and regression testing.
+
+This provider is a functional baseline, not yet a visual match for the approved golden-reference video or the fixed Cổ Nhân character sheet. A character-consistent visual provider and approved hand/eraser assets can be added behind the same provider contract without changing the external-runner architecture.
+
+## Automated validation
+
+- Deterministic end-to-end self-test workflow: `.github/workflows/whiteboard-runner-self-test.yml`.
+- Self-test run `33487976326`: completed successfully, including MP4 render, project archive, and QC verification.
+- Live LucyLab production run `33488163236`: completed successfully with real Cổ Nhân voice, two locked pages, eraser transition, subtitles, final MP4, and passing QC.
 
 ## TTS-only workflow
 
