@@ -83,13 +83,30 @@ jobs:
           python -m py_compile automation/production_runner.py
           echo "Core runner 3.1.1 SHA-256: $SOURCE_SHA"
 
+      - name: Build core compatibility job
+        shell: bash
+        run: |
+          python - <<'PY'
+          import copy, json
+          from pathlib import Path
+          src=Path('automation/jobs/current.json')
+          job=json.loads(src.read_text(encoding='utf-8'))
+          core=copy.deepcopy(job)
+          # Core 3.1.1 remains the TTS/timeline compatibility layer. The V3.3
+          # finalizer owns production visuals, so core intentionally uses its
+          # configured deterministic provider only for the intermediate project.
+          core['imageProvider']='local-doodle-v2'
+          Path('automation/jobs/core-compat.json').write_text(json.dumps(core, ensure_ascii=False, indent=2), encoding='utf-8')
+          print('core compatibility provider=local-doodle-v2; final visualProfile=' + str(job.get('visualProfile')))
+          PY
+
       - name: Run core production for TTS timeline and project contract
         env:
           LUCYLAB_API_KEY: ${{ secrets.LUCYLAB_API_KEY }}
           WHITEBOARD_UPSTREAM_ROOT: ${{ github.workspace }}/_vendor/srt-whiteboard-animation
         run: |
           python automation/production_runner.py \
-            --job automation/jobs/current.json \
+            --job automation/jobs/core-compat.json \
             --out automation/output/production-current
 
       - name: Restore and validate V3.3 visual finalizer
