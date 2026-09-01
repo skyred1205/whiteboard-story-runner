@@ -44,38 +44,15 @@ jobs:
             mv "$f" "automation/runner_parts/${base}.b64"
           done
           NEW_PAYLOAD=$(cat automation/runner_parts/part-*.b64 | sha256sum | awk '{print $1}')
-          echo "NEW_PAYLOAD=$NEW_PAYLOAD" >> "$GITHUB_ENV"
+          test "$NEW_PAYLOAD" = "0f46e824a6955c11b91ab9d64b95b10fc0d6e971f1ff7099ca446fa0f9de9113"
           echo "parts=$(find automation/runner_parts -name 'part-*.b64' | wc -l) payload=$NEW_PAYLOAD source=$NEW_SOURCE"
 
-      - name: Update workflow integrity pins
-        shell: bash
-        run: |
-          python - <<'PY'
-          import os
-          from pathlib import Path
-
-          old_payload = "6697073e702b04d89045e9173444fc5fe64e0875750eccf0835d51300191db60"
-          old_source = "21713423bfbfe4bf983e16d871bf456d4fc32968d81c946c5d0091a03f0e5d16"
-          new_payload = os.environ["NEW_PAYLOAD"]
-          new_source = os.environ["NEW_SOURCE"]
-          for raw in [
-              ".github/workflows/whiteboard-production.yml",
-              ".github/workflows/whiteboard-runner-self-test.yml",
-          ]:
-              p = Path(raw)
-              s = p.read_text(encoding="utf-8")
-              if old_payload not in s or old_source not in s:
-                  raise SystemExit(f"expected old integrity pins missing in {raw}")
-              s = s.replace(old_payload, new_payload).replace(old_source, new_source)
-              p.write_text(s, encoding="utf-8")
-          PY
-
-      - name: Commit runner 3.1.1
+      - name: Commit runner payload only
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "whiteboard-runner-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add automation/runner_parts .github/workflows/whiteboard-production.yml .github/workflows/whiteboard-runner-self-test.yml
+          git add automation/runner_parts
           git commit -m "Fix semantic visual mapping in runner 3.1.1"
           git push origin HEAD:chatgpt-tts
