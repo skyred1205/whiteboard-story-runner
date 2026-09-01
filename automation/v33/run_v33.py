@@ -21,10 +21,6 @@ def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def sha256_file(path: Path) -> str:
-    return sha256_bytes(path.read_bytes())
-
-
 def run(cmd: list[str], *, env: dict[str, str] | None = None) -> None:
     print("+", " ".join(str(x) for x in cmd), flush=True)
     subprocess.run(cmd, check=True, env=env)
@@ -61,6 +57,18 @@ def restore_v33(root: Path) -> Path:
     out = root / "automation/v33_finalize.py"
     out.write_bytes(source)
     return out
+
+
+def apply_v33_runtime_fixes(path: Path) -> None:
+    """Apply narrowly-scoped fixes after validating the immutable V3.3 payload."""
+    text = path.read_text(encoding="utf-8")
+    old = "        rr(d,(cx-int(w*.31),yy+70,cx+int(w*.31),min(y1-12,yy+70+bh)),16,'#6F9F6D',width=5)"
+    new = "        fy1=y1-12; fy0=max(y0+12,min(yy+35,fy1-max(38,min(bh,80)))); rr(d,(cx-int(w*.31),fy0,cx+int(w*.31),fy1),16,'#6F9F6D',width=5)"
+    if old not in text:
+        raise SystemExit("RUNNER_NOT_READY: expected compound-money patch point not found")
+    text = text.replace(old, new, 1)
+    path.write_text(text, encoding="utf-8")
+    print("Applied V3.3 runtime fix: compound-money final stack bounds", flush=True)
 
 
 def validate_job(job: dict) -> None:
@@ -110,7 +118,6 @@ def main() -> None:
     job = json.loads(job_path.read_text(encoding="utf-8"))
     validate_job(job)
 
-    # Decode transport-safe assets and install the approved drawing hand into upstream.
     runtime_assets = root / "automation/v33/runtime-assets"
     run([
         sys.executable,
@@ -122,6 +129,7 @@ def main() -> None:
 
     core = restore_core(root)
     v33 = restore_v33(root)
+    apply_v33_runtime_fixes(v33)
     run([sys.executable, "-m", "py_compile", str(core), str(v33)])
 
     core_job = copy.deepcopy(job)
