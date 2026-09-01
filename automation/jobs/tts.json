@@ -1,0 +1,7 @@
+{
+  "enabled": false,
+  "jobId": "tts-disabled-template",
+  "text": "Mỗi ngày tiến một bước nhỏ.",
+  "voiceAlias": "co-nhan",
+  "speed": 1.0
+}
