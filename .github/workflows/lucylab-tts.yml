@@ -20,12 +20,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Read job mode
+        id: job
+        shell: bash
+        run: |
+          MODE=$(python -c "import json; print(json.load(open('automation/jobs/current.json', encoding='utf-8')).get('mode','tts'))")
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "Job mode: $MODE"
+
       - name: Set up Python
+        if: steps.job.outputs.mode != 'production'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Run LucyLab bridge
+        if: steps.job.outputs.mode != 'production'
         env:
           LUCYLAB_API_KEY: ${{ secrets.LUCYLAB_API_KEY }}
         run: |
@@ -34,7 +44,7 @@ jobs:
             --out automation/output/current
 
       - name: Upload LucyLab output
-        if: always()
+        if: steps.job.outputs.mode != 'production' && always()
         uses: actions/upload-artifact@v4
         with:
           name: lucylab-current
