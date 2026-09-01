@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "mode": "production",
   "enabled": true,
-  "jobId": "whiteboard-production-v3-smoke-20260901-02",
+  "jobId": "whiteboard-production-v3.1-live-preflight-20260901-03",
   "script": "Muốn học một kỹ năng mới, hãy bắt đầu bằng đọc để hiểu, ghi lại điều cốt lõi, rồi luyện tập một việc thật nhỏ. Sau đó, hãy lặp lại mỗi ngày, kiểm tra tiến bộ, sửa lỗi và tiếp tục cho đến khi thành thạo.",
   "voiceAlias": "co-nhan",
   "voiceSpeed": 1.0,
