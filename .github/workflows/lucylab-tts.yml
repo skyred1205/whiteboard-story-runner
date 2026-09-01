@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: lucylab-whiteboard
+  cancel-in-progress: false
+
 jobs:
   tts:
     runs-on: ubuntu-latest
