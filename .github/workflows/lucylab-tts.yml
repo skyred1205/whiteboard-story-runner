@@ -4,16 +4,14 @@ on:
   push:
     branches: [chatgpt-tts]
     paths:
-      - 'automation/jobs/current.json'
-      - 'automation/lucylab_bridge.py'
-      - '.github/workflows/lucylab-tts.yml'
+      - 'automation/jobs/tts.json'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: lucylab-whiteboard
+  group: lucylab-account
   cancel-in-progress: false
 
 jobs:
@@ -24,31 +22,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Read job mode
-        id: job
-        shell: bash
-        run: |
-          MODE=$(python -c "import json; print(json.load(open('automation/jobs/current.json', encoding='utf-8')).get('mode','tts'))")
-          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
-          echo "Job mode: $MODE"
-
       - name: Set up Python
-        if: steps.job.outputs.mode != 'production'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Run LucyLab bridge
-        if: steps.job.outputs.mode != 'production'
         env:
           LUCYLAB_API_KEY: ${{ secrets.LUCYLAB_API_KEY }}
         run: |
           python automation/lucylab_bridge.py \
-            --job automation/jobs/current.json \
+            --job automation/jobs/tts.json \
             --out automation/output/current
 
       - name: Upload LucyLab output
-        if: steps.job.outputs.mode != 'production' && always()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: lucylab-current
