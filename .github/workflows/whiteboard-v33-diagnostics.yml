@@ -16,6 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Pillow
+        run: python -m pip install --disable-pip-version-check Pillow==11.0.0
+
       - name: Print observed checksums
         shell: bash
         run: |
