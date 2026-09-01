@@ -1,0 +1,74 @@
+name: Whiteboard Production
+
+on:
+  push:
+    branches: [chatgpt-tts]
+    paths:
+      - 'automation/jobs/current.json'
+      - 'automation/production_runner.py.gz.b64'
+      - 'automation/requirements-production.txt'
+      - '.github/workflows/whiteboard-production.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  production:
+    if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip-production]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read job mode
+        id: job
+        shell: bash
+        run: |
+          MODE=$(python -c "import json; print(json.load(open('automation/jobs/current.json', encoding='utf-8')).get('mode','tts'))")
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "Job mode: $MODE"
+
+      - name: Set up Python
+        if: steps.job.outputs.mode == 'production'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: automation/requirements-production.txt
+
+      - name: Install ffmpeg
+        if: steps.job.outputs.mode == 'production'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+
+      - name: Install Python dependencies
+        if: steps.job.outputs.mode == 'production'
+        run: python -m pip install -r automation/requirements-production.txt
+
+      - name: Restore production runner
+        if: steps.job.outputs.mode == 'production'
+        shell: bash
+        run: |
+          base64 -d automation/production_runner.py.gz.b64 | gzip -d > automation/production_runner.py
+          python -m py_compile automation/production_runner.py
+
+      - name: Run full production
+        if: steps.job.outputs.mode == 'production'
+        env:
+          LUCYLAB_API_KEY: ${{ secrets.LUCYLAB_API_KEY }}
+        run: |
+          python automation/production_runner.py \
+            --job automation/jobs/current.json \
+            --out automation/output/production-current
+
+      - name: Upload production artifact
+        if: steps.job.outputs.mode == 'production' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whiteboard-current
+          path: automation/output/production-current
+          if-no-files-found: warn
+          retention-days: 7
