@@ -90,17 +90,17 @@ jobs:
                 {
                   "sceneId":"scene-01","storyBasis":"Lãi kép tăng dần","holdMs":500,"eraseMs":700,
                   "elements":[
-                    {"id":"conhan","label":"Cổ Nhân với tiền","anchorText":"Tiền gốc sinh ra lãi","renderKind":"conhan-money","mustRenderAs":["fixed Cổ Nhân character with money"],"slot":"top","sequence":1},
-                    {"id":"compound","label":"Lãi nhập vào vốn","anchorText":"Lãi nhập vào vốn và tiếp tục tăng","renderKind":"compound-money","mustRenderAs":["interest merging into principal"],"slot":"mid","sequence":2},
-                    {"id":"growth","label":"Đường cong tăng trưởng dốc dần","anchorText":"Đường cong tăng trưởng dốc dần","renderKind":"graph","mustRenderAs":["accelerating growth curve"],"slot":"bottom","sequence":3}
+                    {"id":"conhan","label":"Cổ Nhân với tiền","narrativeRole":"Mở ý bằng nhân vật cố định và tiền gốc","anchorText":"Tiền gốc sinh ra lãi","visualWhy":"Voice đang nói trực tiếp về tiền gốc sinh lãi, nên dùng Cổ Nhân tương tác với tiền để mở cảnh.","renderKind":"conhan-money","mustRenderAs":["fixed Cổ Nhân character with money"],"slot":"top","sequence":1},
+                    {"id":"compound","label":"Lãi nhập vào vốn","narrativeRole":"Giải thích cơ chế lãi nhập gốc","anchorText":"Lãi nhập vào vốn và tiếp tục tăng","visualWhy":"Voice mô tả lãi được nhập lại vào vốn, nên phải thể hiện hai phần tiền hợp nhất và tiếp tục lớn lên.","renderKind":"compound-money","mustRenderAs":["interest merging into principal"],"slot":"mid","sequence":2},
+                    {"id":"growth","label":"Đường cong tăng trưởng dốc dần","narrativeRole":"Cho thấy tốc độ tăng nhanh dần","anchorText":"Đường cong tăng trưởng dốc dần","visualWhy":"Voice gọi trực tiếp đường cong tăng trưởng, nên visual phải là biểu đồ tăng tốc chứ không phải vật thể thay thế.","renderKind":"graph","mustRenderAs":["accelerating growth curve"],"slot":"bottom","sequence":3}
                   ]
                 },
                 {
                   "sceneId":"scene-02","storyBasis":"Thời gian, quả cầu tuyết và rủi ro","holdMs":600,"eraseMs":0,
                   "elements":[
-                    {"id":"seed","label":"Mầm cây tăng trưởng","anchorText":"Bắt đầu sớm và cho thời gian làm việc","renderKind":"seedling","mustRenderAs":["growing seedling"],"slot":"top","sequence":1},
-                    {"id":"snowball","label":"Quả cầu tuyết lớn dần","anchorText":"Lãi kép giống một quả cầu tuyết","renderKind":"snowball","mustRenderAs":["snowball rolling and growing"],"slot":"mid","sequence":2},
-                    {"id":"warning","label":"Cảnh báo rủi ro","anchorText":"Luôn nhớ rủi ro thực tế","renderKind":"warning","mustRenderAs":["risk warning"],"slot":"bottom","sequence":3}
+                    {"id":"seed","label":"Mầm cây tăng trưởng","narrativeRole":"Minh họa lợi thế bắt đầu sớm","anchorText":"Bắt đầu sớm và cho thời gian làm việc","visualWhy":"Mầm cây phát triển theo thời gian là ẩn dụ trực quan cho việc bắt đầu sớm và kiên nhẫn.","renderKind":"seedling","mustRenderAs":["growing seedling"],"slot":"top","sequence":1},
+                    {"id":"snowball","label":"Quả cầu tuyết lớn dần","narrativeRole":"Minh họa phép ẩn dụ lãi kép","anchorText":"Lãi kép giống một quả cầu tuyết","visualWhy":"Voice nêu trực tiếp phép ẩn dụ quả cầu tuyết, nên phải vẽ quả cầu tuyết lăn và lớn dần.","renderKind":"snowball","mustRenderAs":["snowball rolling and growing"],"slot":"mid","sequence":2},
+                    {"id":"warning","label":"Cảnh báo rủi ro","narrativeRole":"Chốt bằng lưu ý rủi ro","anchorText":"Luôn nhớ rủi ro thực tế","visualWhy":"Voice đang cảnh báo, nên visual phải có dấu hiệu rủi ro rõ ràng và không thay bằng biểu tượng tăng trưởng.","renderKind":"warning","mustRenderAs":["risk warning"],"slot":"bottom","sequence":3}
                   ]
                 }
               ]
