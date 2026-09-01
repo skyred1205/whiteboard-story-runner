@@ -1,18 +1,19 @@
 # whiteboard-story-runner
 
-External GitHub Actions runner for **Whiteboard Story Cổ Nhân**. ChatGPT/Skill prepares a locked production job; GitHub performs TTS, scene generation, upstream whiteboard rendering, eraser transitions, subtitles, technical QA, and MP4 packaging. Production rendering therefore does not run inside ChatGPT Work.
+External GitHub Actions production runner for **Tạo video bảng trắng V3.3**. ChatGPT/Skill owns script, semantic storyboard and the final visual review. GitHub owns LucyLab TTS, timing, deterministic visual generation, pinned whiteboard rendering, eraser transitions, captions, technical QC and MP4 packaging. Heavy production rendering does not run inside ChatGPT Work/Codex.
 
 ## Architecture
 
 ```text
 ChatGPT Skill
+  -> locked semantic storyboard + renderKind/mustRenderAs
   -> automation/jobs/current.json
-  -> Whiteboard Production workflow
-  -> LucyLab voice + SRT
-  -> source scenes + annotation
-  -> pinned upstream renderer
-  -> eraser transitions + subtitles + QA
+  -> GitHub Whiteboard Production
+     -> core runner 3.1.1: LucyLab + SRT + timeline/project contract
+     -> V3.3 finalizer 3.3.0: conhan-visual-v1 + render + eraser + orange captions + QC contact sheets
   -> whiteboard-current artifact
+  -> mandatory ChatGPT vision gate
+  -> FINAL only when vision gate passes
 ```
 
 ## Production contract
@@ -21,66 +22,98 @@ ChatGPT Skill
 - Job: `automation/jobs/current.json`
 - Workflow: `.github/workflows/whiteboard-production.yml`
 - Artifact: `whiteboard-current`
-- Runner: `3.1.0`
-- Upstream repository: `geeklee/srt-whiteboard-animation`
-- Upstream release: `v1.0.0`
-- Pinned commit: `696a7243c0e6ffb6827676e539c2ca5ebae2bf6b`
+- Effective runner: `3.3.0`
+- Visual provider/profile: `conhan-visual-v1`
+- Upstream renderer: `geeklee/srt-whiteboard-animation` `v1.0.0`
+- Pinned upstream commit: `696a7243c0e6ffb6827676e539c2ca5ebae2bf6b`
+- V3.3 payload: `automation/v33/v33_finalize.py.gz.b64`
+- Approved compact character reference: `automation/v33/assets/conhan-front.webp`
+- Approved eraser-hand reference: `automation/v33/assets/eraser-hand.webp`
 
-The workflow checks out and verifies that exact upstream commit before rendering. It reconstructs the production runner from the checked-in payload parts, verifies both payload and source SHA-256 values, and compiles the runner before use.
+The workflow verifies SHA-256 values for both the core runner and V3.3 finalizer before execution.
 
-## Production outputs
+## V3.3 visual rules
 
-The `whiteboard-current` artifact contains at least:
+- Vertical 9:16 output, normally 1080 × 1920 at 30 fps.
+- Exactly 3–4 primary visual beats per page.
+- Every beat requires an explicit supported `renderKind`; unsupported kinds fail instead of silently falling back to an unrelated icon.
+- `mustRenderAs` is part of the semantic contract.
+- Fixed Cổ Nhân identity uses the approved character reference for character beats.
+- Drawing phase uses the pinned upstream pen-hand after sanitizing the marker barrel so foreign text is not visible.
+- Page transition uses a visible hand holding an eraser and ends on clean paper.
+- Captions are hard-gated to one line and at most 6 words, with dark text, warm paper fill and orange outer border near the bottom.
+- V3.3 scene generator enforces a clear caption safe zone and minimum per-object pixel occupancy to reject tiny visuals.
+
+## Two-layer QC — mandatory
+
+Runner `PASS` is **not enough to call a video FINAL**.
+
+Layer 1 — GitHub runner QC:
+- schema/storyboard contract;
+- explicit render kinds;
+- object pixel occupancy;
+- caption safe zone;
+- caption one-line/word-count rule;
+- codecs/duration/artifacts;
+- transition output.
+
+Layer 2 — ChatGPT vision gate:
+- compare `qc/source-contact-sheet.jpg` against storyboard + `mustRenderAs`;
+- inspect `qc/final-contact-sheet.jpg` for layout density, character identity, pen-hand and caption style;
+- inspect `qc/transition-contact-sheet.jpg` for visible eraser-hand and clean erase behavior;
+- reject the run as `VISUAL_QC_FAILED` if semantics or style are wrong even when GitHub runner QC says pass.
+
+The artifact records `requiresChatGPTVisionGate: true` to prevent a metadata-only PASS from being mistaken for final approval.
+
+## Artifact contract
+
+`whiteboard-current` contains at least:
 
 ```text
 final/final.mp4
 project.zip
 status.json
 qc-report.json
+qc/v33-runner-qc.json
+qc/source-contact-sheet.jpg
+qc/final-contact-sheet.jpg
+qc/transition-contact-sheet.jpg   # when the video has erase transitions
 manifest.json
+script.txt
+storyboard.json
+project.json
+audio/
+scenes/
+v33-assets/
 ```
 
-The project bundle also includes the script, LucyLab audio/SRT, scene sources, annotations, intermediate clips, final subtitle files, and the locked job specification.
+## Self-test
 
-## Locked rules enforced by the runner
+`.github/workflows/whiteboard-runner-self-test.yml` is secret-free. It uses fixture audio/SRT but exercises:
+- core project/timing pipeline;
+- V3.3 `conhan-visual-v1` source generation;
+- approved character/eraser assets;
+- pinned upstream line→color renderer;
+- erase transition;
+- single-line orange caption pipeline;
+- V3.3 QC/contact-sheet generation.
 
-- Vertical 9:16 output, normally 1080 x 1920 at 30 fps.
-- Exactly 3 or 4 primary visual objects per page.
-- Storyboard must be locked before production.
-- Drawing order is line art first, then color.
-- A visible eraser transition is inserted between pages.
-- Subtitle chunks target 4–6 words and remain in the caption-safe zone.
-- Final output must pass codec, dimensions, duration, storyboard, scene-occupancy, caption, and transition checks.
+A successful self-test proves the compute/render plane. Live LucyLab production still depends on the GitHub Actions secret `LUCYLAB_API_KEY`.
 
-## Scene source provider
-
-The working baseline provider is `local-doodle-v2`. It deterministically creates clean whiteboard source scenes from the locked storyboard and is suitable for end-to-end production and regression testing.
-
-This provider is a functional baseline, not yet a visual match for the approved golden-reference video or the fixed Cổ Nhân character sheet. A character-consistent visual provider and approved hand/eraser assets can be added behind the same provider contract without changing the external-runner architecture.
-
-## Automated validation
-
-- Deterministic end-to-end self-test workflow: `.github/workflows/whiteboard-runner-self-test.yml`.
-- Self-test run `33487976326`: completed successfully, including MP4 render, project archive, and QC verification.
-- Live LucyLab production run `33488163236`: completed successfully with real Cổ Nhân voice, two locked pages, eraser transition, subtitles, final MP4, and passing QC.
-
-## TTS-only workflow
-
-A separate TTS-only job is available for diagnostics:
+## TTS-only diagnostics
 
 - Job: `automation/jobs/tts.json`
 - Workflow: `.github/workflows/lucylab-tts.yml`
 - Artifact: `lucylab-current`
 
-Production jobs no longer trigger the TTS-only workflow, preventing duplicate LucyLab exports. Both workflows share one concurrency group so only one LucyLab export is started at a time.
+TTS-only and production workflows share the LucyLab concurrency group so exports do not overlap.
 
 ## Security
 
 - Never commit LucyLab API keys.
-- Store the key only as the GitHub Actions secret `LUCYLAB_API_KEY`.
-- The runner reads the secret only during the workflow.
-- Logs, job payloads, and output artifacts must not contain the secret.
+- Store the key only as GitHub Actions secret `LUCYLAB_API_KEY`.
+- Never put secrets in job JSON, logs or artifacts.
 
-## Dispatching a production job
+## Dispatch
 
-Write a schema-v2 production payload to `automation/jobs/current.json` on branch `chatgpt-tts`. A push to that file starts the production workflow. Monitor the matching workflow run and download artifact `whiteboard-current` after it completes.
+Write a schema-v2 production payload to `automation/jobs/current.json` on branch `chatgpt-tts`. Production jobs must use `visualProfile: "conhan-visual-v1"`, explicit `renderKind` per element, and a locked storyboard. After GitHub success, download `whiteboard-current` and perform the mandatory ChatGPT vision gate before reporting FINAL.
