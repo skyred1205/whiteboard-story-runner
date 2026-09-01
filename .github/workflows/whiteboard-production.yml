@@ -33,13 +33,19 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
-          job = json.loads(Path('automation/jobs/current.json').read_text(encoding='utf-8'))
+          job=json.loads(Path('automation/jobs/current.json').read_text(encoding='utf-8'))
           if job.get('mode') != 'production':
               raise SystemExit('automation/jobs/current.json is not a production job')
           if job.get('enabled') is not True:
               raise SystemExit('production job is disabled')
           if job.get('visualProfile') != 'conhan-visual-v1' and (job.get('storyboard') or {}).get('visualProfile') != 'conhan-visual-v1':
               raise SystemExit('V3.3 production requires visualProfile=conhan-visual-v1')
+          for page in (job.get('storyboard') or {}).get('pages', []):
+              for element in page.get('elements', []):
+                  if not element.get('renderKind'):
+                      raise SystemExit(f"Missing renderKind: {page.get('sceneId')} / {element.get('id')}")
+                  if not element.get('mustRenderAs'):
+                      raise SystemExit(f"Missing mustRenderAs: {page.get('sceneId')} / {element.get('id')}")
           print('jobId=' + str(job.get('jobId')))
           PY
 
@@ -72,35 +78,27 @@ jobs:
           sudo apt-get install -y -qq ffmpeg
           python -m pip install --disable-pip-version-check -r automation/requirements-production.txt
 
-      - name: Restore and validate core production runner
+      - name: Restore and validate core runner
         shell: bash
         run: |
-          PAYLOAD_SHA=$(cat automation/runner_parts/part-*.b64 | sha256sum | awk '{print $1}')
-          test "$PAYLOAD_SHA" = "0f46e824a6955c11b91ab9d64b95b10fc0d6e971f1ff7099ca446fa0f9de9113"
+          test "$(cat automation/runner_parts/part-*.b64 | sha256sum | awk '{print $1}')" = "0f46e824a6955c11b91ab9d64b95b10fc0d6e971f1ff7099ca446fa0f9de9113"
           cat automation/runner_parts/part-*.b64 | base64 -d | gzip -d > automation/production_runner.py
-          SOURCE_SHA=$(sha256sum automation/production_runner.py | awk '{print $1}')
-          test "$SOURCE_SHA" = "1c05f173076a8900c472b0f0f93fd3959461a6db8623ca5fb019d0e931506527"
+          test "$(sha256sum automation/production_runner.py | awk '{print $1}')" = "1c05f173076a8900c472b0f0f93fd3959461a6db8623ca5fb019d0e931506527"
           python -m py_compile automation/production_runner.py
-          echo "Core runner 3.1.1 SHA-256: $SOURCE_SHA"
 
       - name: Build core compatibility job
         shell: bash
         run: |
           python - <<'PY'
-          import copy, json
+          import copy,json
           from pathlib import Path
-          src=Path('automation/jobs/current.json')
-          job=json.loads(src.read_text(encoding='utf-8'))
+          job=json.loads(Path('automation/jobs/current.json').read_text(encoding='utf-8'))
           core=copy.deepcopy(job)
-          # Core 3.1.1 remains the TTS/timeline compatibility layer. The V3.3
-          # finalizer owns production visuals, so core intentionally uses its
-          # configured deterministic provider only for the intermediate project.
           core['imageProvider']='local-doodle-v2'
-          Path('automation/jobs/core-compat.json').write_text(json.dumps(core, ensure_ascii=False, indent=2), encoding='utf-8')
-          print('core compatibility provider=local-doodle-v2; final visualProfile=' + str(job.get('visualProfile')))
+          Path('automation/jobs/core-compat.json').write_text(json.dumps(core,ensure_ascii=False,indent=2),encoding='utf-8')
           PY
 
-      - name: Run core production for TTS timeline and project contract
+      - name: Run core TTS and timeline layer
         env:
           LUCYLAB_API_KEY: ${{ secrets.LUCYLAB_API_KEY }}
           WHITEBOARD_UPSTREAM_ROOT: ${{ github.workspace }}/_vendor/srt-whiteboard-animation
@@ -109,19 +107,30 @@ jobs:
             --job automation/jobs/core-compat.json \
             --out automation/output/production-current
 
-      - name: Restore and validate V3.3 visual finalizer
+      - name: Restore and validate V3.3 finalizer
         shell: bash
         run: |
-          OBSERVED_PAYLOAD=$(sha256sum automation/v33/v33_finalize.py.gz.b64 | awk '{print $1}')
-          test "$OBSERVED_PAYLOAD" = "$V33_PAYLOAD_SHA"
+          test "$(sha256sum automation/v33/v33_finalize.py.gz.b64 | awk '{print $1}')" = "$V33_PAYLOAD_SHA"
           base64 -d automation/v33/v33_finalize.py.gz.b64 | gzip -d > automation/v33_finalize.py
-          OBSERVED_SOURCE=$(sha256sum automation/v33_finalize.py | awk '{print $1}')
-          test "$OBSERVED_SOURCE" = "$V33_SOURCE_SHA"
+          test "$(sha256sum automation/v33_finalize.py | awk '{print $1}')" = "$V33_SOURCE_SHA"
           python -m py_compile automation/v33_finalize.py
-          echo "V3.3 finalizer SHA-256: $OBSERVED_SOURCE"
 
-      - name: Apply V3.3 visual engine and final QC package
+      - name: Canonicalize V3.3 image assets to PNG
         shell: bash
+        run: |
+          mkdir -p automation/v33/runtime-assets
+          ffmpeg -y -loglevel error -i automation/v33/assets/conhan-front.webp -frames:v 1 automation/v33/runtime-assets/conhan-front.png
+          ffmpeg -y -loglevel error -i automation/v33/assets/eraser-hand.webp -frames:v 1 automation/v33/runtime-assets/eraser-hand.png
+          test -s automation/v33/runtime-assets/conhan-front.png
+          test -s automation/v33/runtime-assets/eraser-hand.png
+          python - <<'PY'
+          from PIL import Image
+          for p in ['automation/v33/runtime-assets/conhan-front.png','automation/v33/runtime-assets/eraser-hand.png']:
+              im=Image.open(p).convert('RGBA')
+              print(p, im.size, im.mode)
+          PY
+
+      - name: Apply V3.3 visual engine and QC package
         env:
           WHITEBOARD_UPSTREAM_ROOT: ${{ github.workspace }}/_vendor/srt-whiteboard-animation
         run: |
@@ -130,8 +139,8 @@ jobs:
             --out automation/output/production-current \
             --upstream "$WHITEBOARD_UPSTREAM_ROOT" \
             --assets automation/output/production-current/v33-assets \
-            --character-sheet automation/v33/assets/conhan-front.webp \
-            --eraser-hand automation/v33/assets/eraser-hand.webp
+            --character-sheet automation/v33/runtime-assets/conhan-front.png \
+            --eraser-hand automation/v33/runtime-assets/eraser-hand.png
 
       - name: Verify V3.3 deliverables
         shell: bash
@@ -146,37 +155,27 @@ jobs:
           root=Path('automation/output/production-current')
           status=json.loads((root/'status.json').read_text(encoding='utf-8'))
           qc=json.loads((root/'qc/v33-runner-qc.json').read_text(encoding='utf-8'))
-          if status.get('state') != 'completed' or status.get('runnerVersion') != '3.3.0':
+          if status.get('state')!='completed' or status.get('runnerVersion')!='3.3.0':
               raise SystemExit(f'Bad V3.3 status: {status}')
           if qc.get('pass') is not True:
               raise SystemExit(f'V3.3 runner QC failed: {qc}')
           if qc.get('requiresChatGPTVisionGate') is not True:
               raise SystemExit('V3.3 must require external vision gate')
-          print('V3.3 runner checks passed; ChatGPT vision gate remains mandatory before FINAL.')
+          print('Runner QC PASS; independent ChatGPT vision gate still required before FINAL.')
           PY
 
       - name: Write run summary
         if: always()
         shell: bash
         run: |
-          if [ -f automation/output/production-current/status.json ]; then
-            echo '## Whiteboard Production status' >> "$GITHUB_STEP_SUMMARY"
-            echo '```json' >> "$GITHUB_STEP_SUMMARY"
-            cat automation/output/production-current/status.json >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-          fi
-          if [ -f automation/output/production-current/qc-report.json ]; then
-            echo '## Core QC report' >> "$GITHUB_STEP_SUMMARY"
-            echo '```json' >> "$GITHUB_STEP_SUMMARY"
-            cat automation/output/production-current/qc-report.json >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-          fi
-          if [ -f automation/output/production-current/qc/v33-runner-qc.json ]; then
-            echo '## V3.3 visual runner QC' >> "$GITHUB_STEP_SUMMARY"
-            echo '```json' >> "$GITHUB_STEP_SUMMARY"
-            cat automation/output/production-current/qc/v33-runner-qc.json >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-          fi
+          for f in automation/output/production-current/status.json automation/output/production-current/qc-report.json automation/output/production-current/qc/v33-runner-qc.json; do
+            if [ -f "$f" ]; then
+              echo "## $(basename "$f")" >> "$GITHUB_STEP_SUMMARY"
+              echo '```json' >> "$GITHUB_STEP_SUMMARY"
+              cat "$f" >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
 
       - name: Upload production artifact
         if: always()
