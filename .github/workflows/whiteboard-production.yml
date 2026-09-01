@@ -5,37 +5,57 @@ on:
     branches: [chatgpt-tts]
     paths:
       - 'automation/jobs/current.json'
-      - 'automation/production_runner.py.gz.b64'
-      - 'automation/requirements-production.txt'
-      - '.github/workflows/whiteboard-production.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: lucylab-whiteboard
+  group: lucylab-account
   cancel-in-progress: false
 
 jobs:
   production:
-    if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip-production]') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
+    env:
+      PYTHONUNBUFFERED: '1'
+      WHITEBOARD_UPSTREAM_COMMIT: 696a7243c0e6ffb6827676e539c2ca5ebae2bf6b
     steps:
-      - name: Checkout
+      - name: Checkout runner
         uses: actions/checkout@v4
 
-      - name: Read job mode
-        id: job
+      - name: Validate production job
         shell: bash
         run: |
-          MODE=$(python -c "import json; print(json.load(open('automation/jobs/current.json', encoding='utf-8')).get('mode','tts'))")
-          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
-          echo "Job mode: $MODE"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          job = json.loads(Path('automation/jobs/current.json').read_text(encoding='utf-8'))
+          if job.get('mode') != 'production':
+              raise SystemExit('automation/jobs/current.json is not a production job')
+          if job.get('enabled') is not True:
+              raise SystemExit('production job is disabled')
+          print('jobId=' + str(job.get('jobId')))
+          PY
+
+      - name: Checkout pinned upstream renderer
+        uses: actions/checkout@v4
+        with:
+          repository: geeklee/srt-whiteboard-animation
+          ref: 696a7243c0e6ffb6827676e539c2ca5ebae2bf6b
+          path: _vendor/srt-whiteboard-animation
+          persist-credentials: false
+
+      - name: Verify upstream commit
+        shell: bash
+        run: |
+          OBSERVED=$(git -C _vendor/srt-whiteboard-animation rev-parse HEAD)
+          test "$OBSERVED" = "$WHITEBOARD_UPSTREAM_COMMIT"
+          echo "Pinned upstream v1.0.0: $OBSERVED"
 
       - name: Set up Python
-        if: steps.job.outputs.mode == 'production'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -43,37 +63,57 @@ jobs:
           cache-dependency-path: automation/requirements-production.txt
 
       - name: Install ffmpeg
-        if: steps.job.outputs.mode == 'production'
+        shell: bash
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
 
       - name: Install Python dependencies
-        if: steps.job.outputs.mode == 'production'
-        run: python -m pip install -r automation/requirements-production.txt
+        run: python -m pip install --disable-pip-version-check -r automation/requirements-production.txt
 
-      - name: Restore production runner
-        if: steps.job.outputs.mode == 'production'
+      - name: Restore and validate production runner
         shell: bash
         run: |
-          base64 -d automation/production_runner.py.gz.b64 | gzip -d > automation/production_runner.py
-          sed -i 's/retries: int = 5/retries: int = 10/' automation/production_runner.py
+          PAYLOAD_SHA=$(cat automation/runner_parts/part-*.b64 | sha256sum | awk '{print $1}')
+          test "$PAYLOAD_SHA" = "a1ed8445187a922e7f7ed2c93229da9fcbe63e9cb176845123ca0460f693557a"
+          cat automation/runner_parts/part-*.b64 | base64 -d | gzip -d > automation/production_runner.py
+          SOURCE_SHA=$(sha256sum automation/production_runner.py | awk '{print $1}')
+          test "$SOURCE_SHA" = "4f578762c422fd165597d95077e8e47eb00b9697e9844b7669fd70e2b117cc38"
           python -m py_compile automation/production_runner.py
+          echo "Production runner SHA-256: $SOURCE_SHA"
 
       - name: Run full production
-        if: steps.job.outputs.mode == 'production'
         env:
           LUCYLAB_API_KEY: ${{ secrets.LUCYLAB_API_KEY }}
+          WHITEBOARD_UPSTREAM_ROOT: ${{ github.workspace }}/_vendor/srt-whiteboard-animation
         run: |
           python automation/production_runner.py \
             --job automation/jobs/current.json \
             --out automation/output/production-current
 
+      - name: Write run summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f automation/output/production-current/status.json ]; then
+            echo '## Whiteboard Production status' >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat automation/output/production-current/status.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -f automation/output/production-current/qc-report.json ]; then
+            echo '## QC report' >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat automation/output/production-current/qc-report.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Upload production artifact
-        if: steps.job.outputs.mode == 'production' && always()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: whiteboard-current
           path: automation/output/production-current
           if-no-files-found: warn
           retention-days: 7
+          compression-level: 6
