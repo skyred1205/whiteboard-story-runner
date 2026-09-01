@@ -13,6 +13,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: lucylab-whiteboard
+  cancel-in-progress: false
+
 jobs:
   production:
     if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip-production]') }}
