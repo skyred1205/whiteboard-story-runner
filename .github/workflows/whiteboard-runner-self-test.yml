@@ -25,11 +25,6 @@ jobs:
     env:
       PYTHONUNBUFFERED: '1'
       WHITEBOARD_UPSTREAM_COMMIT: 696a7243c0e6ffb6827676e539c2ca5ebae2bf6b
-      V33_PAYLOAD_SHA: e73316a720647fd156f96fbb4375987979bc525c310b31b8bd5e36e9e042e575
-      V33_SOURCE_SHA: ae88701e4e1bd3162921efeb4dc826e0c513b2ddad2bc33d6cc819ea5087de2e
-      CONHAN_ASSET_SHA: 0f4395bf47a2a5ac9947dc0517f94ddbc49846c2988c8c31132a14a65029794e
-      ERASER_ASSET_SHA: 50bd24485c23b281967b9b4ea5a1200a0c48b25ae6dad75c82499f2c63411949
-      DRAWING_ASSET_SHA: 3ec5e9592aff19a65084616dd6704215de5e81f3775575d5f2bf643616309647
     steps:
       - uses: actions/checkout@v4
 
@@ -40,130 +35,37 @@ jobs:
           path: _vendor/srt-whiteboard-animation
           persist-credentials: false
 
-      - name: Set up runtime
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
           cache-dependency-path: automation/requirements-production.txt
 
-      - name: Install dependencies
+      - name: Install runtime
         run: |
           test "$(git -C _vendor/srt-whiteboard-animation rev-parse HEAD)" = "$WHITEBOARD_UPSTREAM_COMMIT"
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
           python -m pip install --disable-pip-version-check -r automation/requirements-production.txt
 
-      - name: Restore runners and validate assets
-        shell: bash
+      - name: Create deterministic fixture audio
         run: |
-          echo "Checking core payload"
-          test "$(cat automation/runner_parts/part-*.b64 | sha256sum | awk '{print $1}')" = "0f46e824a6955c11b91ab9d64b95b10fc0d6e971f1ff7099ca446fa0f9de9113"
-          cat automation/runner_parts/part-*.b64 | base64 -d | gzip -d > automation/production_runner.py
-          echo "Checking core source"
-          test "$(sha256sum automation/production_runner.py | awk '{print $1}')" = "1c05f173076a8900c472b0f0f93fd3959461a6db8623ca5fb019d0e931506527"
-          echo "Checking V3.3 payload"
-          test "$(sha256sum automation/v33/v33_finalize.py.gz.b64 | awk '{print $1}')" = "$V33_PAYLOAD_SHA"
-          base64 -d automation/v33/v33_finalize.py.gz.b64 | gzip -d > automation/v33_finalize.py
-          echo "Checking V3.3 source"
-          test "$(sha256sum automation/v33_finalize.py | awk '{print $1}')" = "$V33_SOURCE_SHA"
-          echo "Checking visual assets"
-          test "$(sha256sum automation/v33/assets/conhan-front.png | awk '{print $1}')" = "$CONHAN_ASSET_SHA"
-          test "$(sha256sum automation/v33/assets/eraser-hand.png | awk '{print $1}')" = "$ERASER_ASSET_SHA"
-          test "$(sha256sum automation/v33/assets/drawing-hand.png | awk '{print $1}')" = "$DRAWING_ASSET_SHA"
-          python -m py_compile automation/production_runner.py automation/v33_finalize.py
-          python - <<'PY'
-          from PIL import Image
-          paths=[
-              'automation/v33/assets/conhan-front.png',
-              'automation/v33/assets/eraser-hand.png',
-              'automation/v33/assets/drawing-hand.png',
-          ]
-          for p in paths:
-              print('Loading', p, flush=True)
-              im=Image.open(p); im.load(); print('VALID', p, im.size, im.mode, flush=True)
-          PY
+          mkdir -p automation/v33/fixtures/runtime
+          ffmpeg -y -loglevel error \
+            -f lavfi -i "sine=frequency=220:sample_rate=48000:duration=12" \
+            -filter:a "volume=0.02" -ac 2 -c:a pcm_s16le \
+            automation/v33/fixtures/runtime/voice.wav
 
-      - name: Create V3.3 fixture
-        shell: bash
+      - name: Run V3.3 end to end
         run: |
-          mkdir -p automation/self-test
-          cat > automation/self-test/job.json <<'JSON'
-          {
-            "schemaVersion":2,
-            "mode":"production",
-            "enabled":true,
-            "jobId":"whiteboard-v33-self-test",
-            "script":"Tiền gốc sinh ra lãi. Lãi nhập vào vốn và tiếp tục tăng. Đường cong tăng trưởng dốc dần. Bắt đầu sớm và cho thời gian làm việc. Lãi kép giống một quả cầu tuyết. Luôn nhớ rủi ro thực tế.",
-            "voiceAlias":"co-nhan",
-            "voiceSpeed":1.0,
-            "imageProvider":"local-doodle-v2",
-            "visualProfile":"conhan-visual-v1",
-            "renderScale":0.25,
-            "output":{"width":540,"height":960,"fps":24,"format":"mp4"},
-            "rules":{"objectsPerPageMin":3,"objectsPerPageMax":4,"captionWordsMin":4,"captionWordsMax":6,"eraseBetweenPages":true,"lineBeforeColor":true},
-            "storyboard":{"locked":true,"revision":1,"source":"fixture","visualProfile":"conhan-visual-v1","pages":[
-              {"sceneId":"scene-01","storyBasis":"Cơ chế lãi kép","holdMs":500,"eraseMs":700,"elements":[
-                {"id":"conhan","label":"Cổ Nhân với tiền","narrativeRole":"Mở cảnh","anchorText":"Tiền gốc sinh ra lãi","visualWhy":"Nhân vật cố định tương tác với tiền","renderKind":"conhan-money","mustRenderAs":["fixed Cổ Nhân character with money"],"slot":"top","sequence":1},
-                {"id":"compound","label":"Lãi nhập vào vốn","narrativeRole":"Cơ chế cộng dồn","anchorText":"Lãi nhập vào vốn và tiếp tục tăng","visualWhy":"Hai phần tiền hợp nhất và lớn lên","renderKind":"compound-money","mustRenderAs":["interest merging into principal"],"slot":"mid","sequence":2},
-                {"id":"growth","label":"Đường cong tăng trưởng","narrativeRole":"Tăng nhanh dần","anchorText":"Đường cong tăng trưởng dốc dần","visualWhy":"Voice gọi trực tiếp đường cong tăng trưởng","renderKind":"graph","mustRenderAs":["accelerating growth curve"],"slot":"bottom","sequence":3}
-              ]},
-              {"sceneId":"scene-02","storyBasis":"Thời gian và rủi ro","holdMs":600,"eraseMs":0,"elements":[
-                {"id":"seed","label":"Mầm cây tăng trưởng","narrativeRole":"Bắt đầu sớm","anchorText":"Bắt đầu sớm và cho thời gian làm việc","visualWhy":"Mầm cây thể hiện tăng trưởng theo thời gian","renderKind":"seedling","mustRenderAs":["growing seedling"],"slot":"top","sequence":1},
-                {"id":"snowball","label":"Quả cầu tuyết lớn dần","narrativeRole":"Ẩn dụ lãi kép","anchorText":"Lãi kép giống một quả cầu tuyết","visualWhy":"Voice nêu trực tiếp quả cầu tuyết","renderKind":"snowball","mustRenderAs":["snowball rolling and growing"],"slot":"mid","sequence":2},
-                {"id":"warning","label":"Cảnh báo rủi ro","narrativeRole":"Lưu ý cuối","anchorText":"Luôn nhớ rủi ro thực tế","visualWhy":"Voice cảnh báo rủi ro","renderKind":"warning","mustRenderAs":["risk warning"],"slot":"bottom","sequence":3}
-              ]}
-            ]}
-          }
-          JSON
-          cat > automation/self-test/subtitles.srt <<'SRT'
-          1
-          00:00:00,000 --> 00:00:02,000
-          Tiền gốc sinh ra lãi.
-
-          2
-          00:00:02,000 --> 00:00:04,000
-          Lãi nhập vào vốn.
-
-          3
-          00:00:04,000 --> 00:00:06,000
-          Đường cong tăng trưởng dốc dần.
-
-          4
-          00:00:06,000 --> 00:00:08,000
-          Bắt đầu sớm ngay hôm nay.
-
-          5
-          00:00:08,000 --> 00:00:10,000
-          Lãi kép như quả cầu tuyết.
-
-          6
-          00:00:10,000 --> 00:00:12,000
-          Luôn nhớ rủi ro thực tế.
-          SRT
-          ffmpeg -y -loglevel error -f lavfi -i "sine=frequency=220:sample_rate=48000:duration=12" -filter:a "volume=0.02" -ac 2 -c:a pcm_s16le automation/self-test/voice.wav
-
-      - name: Run core compatibility layer
-        run: |
-          python automation/production_runner.py \
-            --job automation/self-test/job.json \
+          python automation/v33/run_v33.py \
+            --job automation/v33/fixtures/job.json \
             --out automation/output/self-test \
             --upstream _vendor/srt-whiteboard-animation \
-            --fixture-audio automation/self-test/voice.wav \
-            --fixture-srt automation/self-test/subtitles.srt
+            --fixture-audio automation/v33/fixtures/runtime/voice.wav \
+            --fixture-srt automation/v33/fixtures/subtitles.srt
 
-      - name: Apply V3.3 visual engine
-        run: |
-          python automation/v33_finalize.py \
-            --job automation/self-test/job.json \
-            --out automation/output/self-test \
-            --upstream _vendor/srt-whiteboard-animation \
-            --assets automation/output/self-test/v33-assets \
-            --character-sheet automation/v33/assets/conhan-front.png \
-            --eraser-hand automation/v33/assets/eraser-hand.png
-
-      - name: Verify V3.3 fixture
-        shell: bash
+      - name: Verify artifact contract
         run: |
           test -s automation/output/self-test/final/final.mp4
           test -s automation/output/self-test/project.zip
@@ -177,8 +79,9 @@ jobs:
           status=json.loads((root/'status.json').read_text(encoding='utf-8'))
           qc=json.loads((root/'qc/v33-runner-qc.json').read_text(encoding='utf-8'))
           assert status['runnerVersion']=='3.3.0' and status['state']=='completed'
-          assert qc['pass'] is True and qc['requiresChatGPTVisionGate'] is True
-          print('V3.3 deterministic self-test PASS; independent vision gate remains mandatory.')
+          assert qc['pass'] is True
+          assert qc['requiresChatGPTVisionGate'] is True
+          print('SELF_TEST_PASS')
           PY
 
       - name: Upload self-test artifact
