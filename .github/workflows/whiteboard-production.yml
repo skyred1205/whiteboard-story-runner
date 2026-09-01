@@ -23,6 +23,8 @@ jobs:
       WHITEBOARD_UPSTREAM_COMMIT: 696a7243c0e6ffb6827676e539c2ca5ebae2bf6b
       V33_PAYLOAD_SHA: 74e37b5030350b37fbd78f110e58d3d1bab3a261def92e117ff91494bd156b27
       V33_SOURCE_SHA: d0d653c033b033d15056a3ef66f72bf73d927b913271404c866a2881968094b6
+      CONHAN_ASSET_SHA: f615a1ef252f016f7b4e9572468c808649492dc1d5104efcd6d7384a4fe5e1d6
+      ERASER_ASSET_SHA: 88f8d5ecb0ff0f5da8d9d501898119673541f7f9a5edcc3eddb601b23c246f8c
     steps:
       - name: Checkout runner
         uses: actions/checkout@v4
@@ -115,19 +117,18 @@ jobs:
           test "$(sha256sum automation/v33_finalize.py | awk '{print $1}')" = "$V33_SOURCE_SHA"
           python -m py_compile automation/v33_finalize.py
 
-      - name: Canonicalize V3.3 image assets to PNG
+      - name: Restore and validate V3.3 visual assets
         shell: bash
         run: |
           mkdir -p automation/v33/runtime-assets
-          ffmpeg -y -loglevel error -i automation/v33/assets/conhan-front.webp -frames:v 1 automation/v33/runtime-assets/conhan-front.png
-          ffmpeg -y -loglevel error -i automation/v33/assets/eraser-hand.webp -frames:v 1 automation/v33/runtime-assets/eraser-hand.png
-          test -s automation/v33/runtime-assets/conhan-front.png
-          test -s automation/v33/runtime-assets/eraser-hand.png
+          base64 -d automation/v33/assets/conhan-front.png.b64 > automation/v33/runtime-assets/conhan-front.png
+          base64 -d automation/v33/assets/eraser-hand.png.b64 > automation/v33/runtime-assets/eraser-hand.png
+          test "$(sha256sum automation/v33/runtime-assets/conhan-front.png | awk '{print $1}')" = "$CONHAN_ASSET_SHA"
+          test "$(sha256sum automation/v33/runtime-assets/eraser-hand.png | awk '{print $1}')" = "$ERASER_ASSET_SHA"
           python - <<'PY'
           from PIL import Image
           for p in ['automation/v33/runtime-assets/conhan-front.png','automation/v33/runtime-assets/eraser-hand.png']:
-              im=Image.open(p).convert('RGBA')
-              print(p, im.size, im.mode)
+              im=Image.open(p); im.load(); print(p, im.size, im.mode)
           PY
 
       - name: Apply V3.3 visual engine and QC package
