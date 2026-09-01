@@ -28,4 +28,20 @@ jobs:
           echo "V33_SOURCE_SHA=$(sha256sum /tmp/v33_finalize.py | awk '{print $1}')"
           echo "CONHAN_ASSET_SHA=$(sha256sum automation/v33/assets/conhan-front.png | awk '{print $1}')"
           echo "ERASER_ASSET_SHA=$(sha256sum automation/v33/assets/eraser-hand.png | awk '{print $1}')"
+          echo "DRAWING_ASSET_SHA=$(sha256sum automation/v33/assets/drawing-hand.png | awk '{print $1}')"
           python -m py_compile /tmp/production_runner.py /tmp/v33_finalize.py
+
+      - name: Validate PNG streams
+        shell: bash
+        run: |
+          python - <<'PY'
+          from PIL import Image
+          for p in [
+              'automation/v33/assets/conhan-front.png',
+              'automation/v33/assets/eraser-hand.png',
+              'automation/v33/assets/drawing-hand.png',
+          ]:
+              print('Loading', p, flush=True)
+              im=Image.open(p); im.load()
+              print('VALID', p, im.size, im.mode, flush=True)
+          PY
