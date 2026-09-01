@@ -1,43 +1,78 @@
 # whiteboard-story-runner
 
-External GitHub Actions runner for **Whiteboard Story Co Nhan**.
+External GitHub Actions runner for **Whiteboard Story Cổ Nhân**. ChatGPT/Skill prepares a locked production job; GitHub performs TTS, scene generation, upstream whiteboard rendering, eraser transitions, subtitles, technical QA, and MP4 packaging. Production rendering therefore does not run inside ChatGPT Work.
 
-The repository separates ChatGPT orchestration from heavy production compute so a normal chat can prepare/dispatch a locked storyboard while GitHub performs TTS, scene generation, whiteboard rendering, caption burn and MP4 packaging.
+## Architecture
 
-## Production flow
+```text
+ChatGPT Skill
+  -> automation/jobs/current.json
+  -> Whiteboard Production workflow
+  -> LucyLab voice + SRT
+  -> source scenes + annotation
+  -> pinned upstream renderer
+  -> eraser transitions + subtitles + QA
+  -> whiteboard-current artifact
+```
 
-1. ChatGPT writes a schema-v2 production job to `automation/jobs/current.json` on branch `chatgpt-tts`.
-2. `.github/workflows/whiteboard-production.yml` starts automatically.
-3. The runner validates the locked storyboard (3–4 elements per page).
-4. LucyLab creates voice + raw SRT using the Actions secret `LUCYLAB_API_KEY`.
-5. The runner maps storyboard anchors to real SRT timing.
-6. `local-doodle-v1` creates one deterministic source scene per page.
-7. The runner creates page specs, annotations and scene QC.
-8. It renders line-art -> color with pen hand, inserts hold + eraser transitions, and retimes audio/captions around those transitions.
-9. FFmpeg burns short bottom captions and exports H.264/AAC MP4 at 1080x1920.
-10. GitHub uploads artifact `whiteboard-current` for 7 days.
+## Production contract
 
-Production artifact includes at least:
+- Branch: `chatgpt-tts`
+- Job: `automation/jobs/current.json`
+- Workflow: `.github/workflows/whiteboard-production.yml`
+- Artifact: `whiteboard-current`
+- Runner: `3.1.0`
+- Upstream repository: `geeklee/srt-whiteboard-animation`
+- Upstream release: `v1.0.0`
+- Pinned commit: `696a7243c0e6ffb6827676e539c2ca5ebae2bf6b`
 
-- `final/final.mp4`
-- `project.zip`
-- `status.json`
-- `qc-report.json`
-- audio/SRT/captions
-- storyboard/project metadata
-- per-scene source, annotation and QC files
+The workflow checks out and verifies that exact upstream commit before rendering. It reconstructs the production runner from the checked-in payload parts, verifies both payload and source SHA-256 values, and compiles the runner before use.
 
-## TTS-only compatibility
+## Production outputs
 
-`.github/workflows/lucylab-tts.yml` remains available for legacy/TTS-only jobs and uploads `lucylab-current`. Production and TTS workflows share concurrency group `lucylab-whiteboard` to avoid overlapping LucyLab jobs.
+The `whiteboard-current` artifact contains at least:
+
+```text
+final/final.mp4
+project.zip
+status.json
+qc-report.json
+manifest.json
+```
+
+The project bundle also includes the script, LucyLab audio/SRT, scene sources, annotations, intermediate clips, final subtitle files, and the locked job specification.
+
+## Locked rules enforced by the runner
+
+- Vertical 9:16 output, normally 1080 x 1920 at 30 fps.
+- Exactly 3 or 4 primary visual objects per page.
+- Storyboard must be locked before production.
+- Drawing order is line art first, then color.
+- A visible eraser transition is inserted between pages.
+- Subtitle chunks target 4–6 words and remain in the caption-safe zone.
+- Final output must pass codec, dimensions, duration, storyboard, scene-occupancy, caption, and transition checks.
+
+## Scene source provider
+
+The working baseline provider is `local-doodle-v2`. It deterministically creates clean whiteboard source scenes from the locked storyboard and is suitable for end-to-end production and regression testing. A future character-consistent generative image provider can be added behind the same provider contract without changing the Skill-to-runner architecture.
+
+## TTS-only workflow
+
+A separate TTS-only job is available for diagnostics:
+
+- Job: `automation/jobs/tts.json`
+- Workflow: `.github/workflows/lucylab-tts.yml`
+- Artifact: `lucylab-current`
+
+Production jobs no longer trigger the TTS-only workflow, preventing duplicate LucyLab exports. Both workflows share one concurrency group so only one LucyLab export is started at a time.
 
 ## Security
 
 - Never commit LucyLab API keys.
-- Store the key only as GitHub Actions secret `LUCYLAB_API_KEY`.
-- Do not put provider secrets in `automation/jobs/current.json`.
-- If LucyLab reports `Invalid or revoked API key`, update the repository secret in GitHub Settings rather than putting the key in chat or source code.
+- Store the key only as the GitHub Actions secret `LUCYLAB_API_KEY`.
+- The runner reads the secret only during the workflow.
+- Logs, job payloads, and output artifacts must not contain the secret.
 
-## Current source-generation note
+## Dispatching a production job
 
-`local-doodle-v1` is a deterministic baseline illustration generator designed to obey storyboard semantics/layout and make remote production self-contained. It is not an AI image model and should not be described as photorealistic or as an exact reproduction of the golden-reference art style.
+Write a schema-v2 production payload to `automation/jobs/current.json` on branch `chatgpt-tts`. A push to that file starts the production workflow. Monitor the matching workflow run and download artifact `whiteboard-current` after it completes.
