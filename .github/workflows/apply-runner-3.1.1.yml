@@ -1,0 +1,81 @@
+name: Apply Runner 3.1.1 Semantic Fix
+
+on:
+  push:
+    branches: [chatgpt-tts]
+    paths:
+      - '.github/workflows/apply-runner-3.1.1.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-runner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout runner branch
+        uses: actions/checkout@v4
+        with:
+          ref: chatgpt-tts
+
+      - name: Reconstruct and patch production runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat automation/runner_parts/part-*.b64 | base64 -d | gzip -d > automation/production_runner.py
+          OLD_SOURCE=$(sha256sum automation/production_runner.py | awk '{print $1}')
+          test "$OLD_SOURCE" = "21713423bfbfe4bf983e16d871bf456d4fc32968d81c946c5d0091a03f0e5d16"
+          patch -p0 < automation/patches/runner-3.1.1-semantic.patch
+          python -m py_compile automation/production_runner.py
+          NEW_SOURCE=$(sha256sum automation/production_runner.py | awk '{print $1}')
+          test "$NEW_SOURCE" = "1c05f173076a8900c472b0f0f93fd3959461a6db8623ca5fb019d0e931506527"
+          echo "NEW_SOURCE=$NEW_SOURCE" >> "$GITHUB_ENV"
+
+      - name: Rebuild payload parts and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          gzip -n -c automation/production_runner.py | base64 -w0 > /tmp/production_runner.py.gz.b64
+          rm -f automation/runner_parts/part-*.b64
+          split -b 4000 -d -a 2 /tmp/production_runner.py.gz.b64 /tmp/part-
+          for f in /tmp/part-*; do
+            base=$(basename "$f")
+            mv "$f" "automation/runner_parts/${base}.b64"
+          done
+          NEW_PAYLOAD=$(cat automation/runner_parts/part-*.b64 | sha256sum | awk '{print $1}')
+          echo "NEW_PAYLOAD=$NEW_PAYLOAD" >> "$GITHUB_ENV"
+          echo "parts=$(find automation/runner_parts -name 'part-*.b64' | wc -l) payload=$NEW_PAYLOAD source=$NEW_SOURCE"
+
+      - name: Update workflow integrity pins
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          old_payload = "6697073e702b04d89045e9173444fc5fe64e0875750eccf0835d51300191db60"
+          old_source = "21713423bfbfe4bf983e16d871bf456d4fc32968d81c946c5d0091a03f0e5d16"
+          new_payload = os.environ["NEW_PAYLOAD"]
+          new_source = os.environ["NEW_SOURCE"]
+          for raw in [
+              ".github/workflows/whiteboard-production.yml",
+              ".github/workflows/whiteboard-runner-self-test.yml",
+          ]:
+              p = Path(raw)
+              s = p.read_text(encoding="utf-8")
+              if old_payload not in s or old_source not in s:
+                  raise SystemExit(f"expected old integrity pins missing in {raw}")
+              s = s.replace(old_payload, new_payload).replace(old_source, new_source)
+              p.write_text(s, encoding="utf-8")
+          PY
+
+      - name: Commit runner 3.1.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "whiteboard-runner-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add automation/runner_parts .github/workflows/whiteboard-production.yml .github/workflows/whiteboard-runner-self-test.yml
+          git commit -m "Fix semantic visual mapping in runner 3.1.1"
+          git push origin HEAD:chatgpt-tts
