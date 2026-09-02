@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "mode": "production",
   "enabled": true,
-  "jobId": "passive-income-30s-v33-redo-20260902-1601",
+  "jobId": "passive-income-30s-v33-redo-20260902-1601-r2",
   "script": "Thu nhập thụ động không phải là ngồi yên mà tiền tự đến. Bạn cần tạo một tài sản hoặc hệ thống trước, rồi nó mới tiếp tục tạo dòng tiền. Ví dụ có thể là tiền gửi sinh lãi, cổ tức, hoặc một sản phẩm số bán nhiều lần. Giai đoạn đầu vẫn cần vốn, thời gian và kỹ năng. Mục tiêu không phải làm giàu nhanh, mà là tạo thêm nguồn thu ít phụ thuộc hơn vào từng giờ bạn làm việc.",
   "voiceAlias": "co-nhan",
   "voiceSpeed": 1.0,
@@ -29,7 +29,7 @@
   },
   "storyboard": {
     "locked": true,
-    "revision": 1,
+    "revision": 2,
     "source": "auto",
     "visualProfile": "conhan-visual-v1",
     "captionPolicy": {
@@ -86,7 +86,7 @@
       {
         "sceneId": "scene-02",
         "storyBasis": "Các ví dụ tạo thu nhập lặp lại vẫn cần đầu tư ban đầu và mục tiêu là giảm phụ thuộc vào giờ làm trực tiếp.",
-        "layoutProfile": "grid-4",
+        "layoutProfile": "stack-3",
         "contentArea": {"x1": 110, "y1": 120, "x2": 970, "y2": 1450},
         "holdMs": 800,
         "eraseMs": 0,
@@ -100,7 +100,7 @@
             "mustRenderAs": ["money compounding", "small money becoming larger"],
             "renderKind": "compound-money",
             "forbiddenSubstitutions": ["single coin", "character filler"],
-            "slot": "tl",
+            "slot": "top",
             "sequence": 1
           },
           {
@@ -108,36 +108,24 @@
             "label": "Thời gian đầu tư ban đầu",
             "narrativeRole": "minh họa nguồn lực phải bỏ ra ở giai đoạn đầu",
             "anchorText": "Giai đoạn đầu vẫn cần vốn, thời gian và kỹ năng",
-            "visualWhy": "Đồng hồ cát thể hiện trực quan phần thời gian và công sức đầu vào.",
-            "mustRenderAs": ["hourglass", "initial effort"],
+            "visualWhy": "Nhân vật với đồng hồ cát thể hiện trực quan thời gian và công sức đầu vào.",
+            "mustRenderAs": ["Cổ Nhân character", "hourglass", "initial effort"],
             "renderKind": "conhan-hourglass",
-            "forbiddenSubstitutions": ["calendar", "random clock"],
-            "slot": "tr",
+            "forbiddenSubstitutions": ["random clock", "money pile only"],
+            "slot": "mid",
             "sequence": 2
-          },
-          {
-            "id": "no-quick-rich",
-            "label": "Không làm giàu nhanh",
-            "narrativeRole": "phủ định kỳ vọng giàu nhanh",
-            "anchorText": "Mục tiêu không phải làm giàu nhanh",
-            "visualWhy": "Cảnh báo là tín hiệu trực quan rõ nhất để phủ định lời hứa giàu nhanh.",
-            "mustRenderAs": ["warning", "no quick-rich cue"],
-            "renderKind": "warning",
-            "forbiddenSubstitutions": ["celebration", "large money pile"],
-            "slot": "bl",
-            "sequence": 3
           },
           {
             "id": "less-hour-dependent-income",
             "label": "Nguồn thu bớt phụ thuộc giờ làm",
-            "narrativeRole": "chốt lợi ích của thu nhập thụ động",
-            "anchorText": "tạo thêm nguồn thu ít phụ thuộc hơn vào từng giờ bạn làm việc",
-            "visualWhy": "Nhân vật chủ động với tín hiệu tiền phù hợp để chốt ý giảm phụ thuộc vào lao động theo giờ.",
+            "narrativeRole": "chốt mục tiêu không làm giàu nhanh mà giảm phụ thuộc vào lao động theo giờ",
+            "anchorText": "Mục tiêu không phải làm giàu nhanh, mà là tạo thêm nguồn thu ít phụ thuộc hơn vào từng giờ bạn làm việc",
+            "visualWhy": "Nhân vật chủ động với tín hiệu tiền phù hợp để chốt ý giảm phụ thuộc vào lao động theo giờ mà không thể hiện giàu nhanh.",
             "mustRenderAs": ["Cổ Nhân character", "confident pose", "money cue"],
             "renderKind": "conhan-money",
-            "forbiddenSubstitutions": ["sleeping character", "luxury lifestyle"],
-            "slot": "br",
-            "sequence": 4
+            "forbiddenSubstitutions": ["sleeping character", "luxury lifestyle", "jackpot"],
+            "slot": "bottom",
+            "sequence": 3
           }
         ]
       }
