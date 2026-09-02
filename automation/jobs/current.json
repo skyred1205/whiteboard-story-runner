@@ -1,7 +1,158 @@
 {
+  "schemaVersion": 2,
+  "mode": "production",
   "enabled": true,
-  "jobId": "passive-income-30s-20260902-1600",
-  "text": "Thu nhập thụ động không có nghĩa là không làm gì mà vẫn có tiền. Đúng hơn, bạn tạo một tài sản hoặc hệ thống trước, rồi nó tiếp tục tạo ra dòng tiền. Ví dụ: tiền gửi sinh lãi, cổ tức từ doanh nghiệp, tiền cho thuê, hoặc một sản phẩm số bán nhiều lần. Điểm quan trọng là lúc đầu vẫn cần vốn, thời gian hoặc kỹ năng để xây nền tảng. Mục tiêu không phải làm giàu nhanh, mà là tạo thêm nguồn thu không phụ thuộc hoàn toàn vào từng giờ bạn làm việc.",
+  "jobId": "passive-income-30s-20260902-1601-v33",
+  "script": "Thu nhập thụ động không phải là nằm yên mà tiền tự rơi vào ví. Bạn vẫn phải xây một tài sản hoặc hệ thống trước, rồi nó mới tiếp tục tạo dòng tiền. Ví dụ, tiền gửi sinh lãi, cổ tức từ khoản đầu tư, hoặc một sản phẩm số bán nhiều lần. Phần khó nằm ở giai đoạn đầu: bạn cần vốn, thời gian hoặc kỹ năng để tạo nền tảng. Mục tiêu không phải làm giàu nhanh, mà là tạo thêm nguồn thu ngày càng ít phụ thuộc vào từng giờ bạn làm việc.",
   "voiceAlias": "co-nhan",
-  "speed": 1.0
+  "voiceSpeed": 1.0,
+  "renderScale": 0.5,
+  "imageProvider": "local-doodle-v2",
+  "visualProfile": "conhan-visual-v1",
+  "output": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "format": "mp4"
+  },
+  "rules": {
+    "objectsPerPageMin": 3,
+    "objectsPerPageMax": 4,
+    "captionWordsMin": 4,
+    "captionWordsMax": 6,
+    "captionSingleLine": true,
+    "captionAccent": "orange-outline",
+    "captionSafeZoneY": [1520, 1920],
+    "eraseBetweenPages": true,
+    "lineBeforeColor": true,
+    "layoutConsistency": true
+  },
+  "storyboard": {
+    "locked": true,
+    "revision": 1,
+    "source": "auto",
+    "visualProfile": "conhan-visual-v1",
+    "captionPolicy": {
+      "singleLine": true,
+      "accent": "orange-outline"
+    },
+    "pages": [
+      {
+        "sceneId": "scene-01",
+        "storyBasis": "Thu nhập thụ động cần một tài sản hoặc hệ thống tạo dòng tiền, không phải tiền tự xuất hiện.",
+        "layoutProfile": "grid-4",
+        "contentArea": {"x1": 110, "y1": 120, "x2": 970, "y2": 1450},
+        "holdMs": 550,
+        "eraseMs": 1000,
+        "elements": [
+          {
+            "id": "conhan-not-free-money",
+            "label": "Cổ Nhân chủ động tạo thu nhập",
+            "narrativeRole": "phá hiểu lầm rằng thu nhập thụ động là không cần làm gì",
+            "anchorText": "Thu nhập thụ động không phải là nằm yên mà tiền tự rơi vào ví",
+            "visualWhy": "Câu mở đầu nói trực tiếp về một người và tiền; nhân vật giúp thể hiện sự chủ động thay vì ngồi chờ tiền.",
+            "mustRenderAs": ["Cổ Nhân character", "money cue", "active not sleeping pose"],
+            "renderKind": "conhan-money",
+            "forbiddenSubstitutions": ["sleeping character", "random money rain only"],
+            "slot": "tl",
+            "sequence": 1
+          },
+          {
+            "id": "wallet-asset-base",
+            "label": "Ví tiền làm nền tảng tài sản",
+            "narrativeRole": "minh họa tài sản hoặc hệ thống được xây trước",
+            "anchorText": "Bạn vẫn phải xây một tài sản hoặc hệ thống trước",
+            "visualWhy": "Ví tiền là visual được runner hỗ trợ để đại diện nền tảng tài chính có chủ đích.",
+            "mustRenderAs": ["wallet", "financial asset base"],
+            "renderKind": "wallet",
+            "forbiddenSubstitutions": ["warning icon", "hourglass"],
+            "slot": "tr",
+            "sequence": 2
+          },
+          {
+            "id": "income-flow-graph",
+            "label": "Biểu đồ dòng tiền tiếp tục tăng",
+            "narrativeRole": "cho thấy hệ thống tiếp tục tạo dòng tiền",
+            "anchorText": "rồi nó mới tiếp tục tạo dòng tiền",
+            "visualWhy": "Biểu đồ tăng thể hiện trực quan dòng tiền tiếp diễn theo thời gian.",
+            "mustRenderAs": ["upward graph", "income growth"],
+            "renderKind": "graph",
+            "forbiddenSubstitutions": ["flat line", "warning symbol"],
+            "slot": "bl",
+            "sequence": 3
+          },
+          {
+            "id": "compound-examples",
+            "label": "Tiền sinh thêm tiền",
+            "narrativeRole": "gom các ví dụ tiền gửi, đầu tư, sản phẩm tạo thu nhập lặp lại",
+            "anchorText": "tiền gửi sinh lãi, cổ tức từ khoản đầu tư, hoặc một sản phẩm số bán nhiều lần",
+            "visualWhy": "Hình tiền tăng dần biểu đạt điểm chung của các ví dụ: một tài sản tiếp tục tạo thêm giá trị.",
+            "mustRenderAs": ["money compounding", "small money becoming larger"],
+            "renderKind": "compound-money",
+            "forbiddenSubstitutions": ["single static coin", "character filler"],
+            "slot": "br",
+            "sequence": 4
+          }
+        ]
+      },
+      {
+        "sceneId": "scene-02",
+        "storyBasis": "Thu nhập thụ động cần đầu tư ban đầu và hướng tới giảm phụ thuộc vào thời gian lao động trực tiếp.",
+        "layoutProfile": "grid-4",
+        "contentArea": {"x1": 110, "y1": 120, "x2": 970, "y2": 1450},
+        "holdMs": 800,
+        "eraseMs": 0,
+        "elements": [
+          {
+            "id": "startup-capital",
+            "label": "Khoản vốn ban đầu",
+            "narrativeRole": "minh họa chi phí đầu vào để xây nền tảng",
+            "anchorText": "bạn cần vốn",
+            "visualWhy": "Một khoản tiền ban đầu là cách trực tiếp nhất để biểu đạt vốn.",
+            "mustRenderAs": ["medium money amount", "initial capital"],
+            "renderKind": "money-medium",
+            "forbiddenSubstitutions": ["large jackpot", "empty wallet"],
+            "slot": "tl",
+            "sequence": 1
+          },
+          {
+            "id": "startup-time",
+            "label": "Thời gian đầu tư ban đầu",
+            "narrativeRole": "minh họa thời gian cần bỏ ra trước khi hệ thống vận hành",
+            "anchorText": "thời gian hoặc kỹ năng để tạo nền tảng",
+            "visualWhy": "Đồng hồ cát biểu đạt rõ sự đầu tư thời gian ban đầu.",
+            "mustRenderAs": ["hourglass", "time investment"],
+            "renderKind": "conhan-hourglass",
+            "forbiddenSubstitutions": ["calendar", "random clock"],
+            "slot": "tr",
+            "sequence": 2
+          },
+          {
+            "id": "not-get-rich-quick",
+            "label": "Cảnh báo không làm giàu nhanh",
+            "narrativeRole": "nhấn mạnh đây không phải con đường giàu nhanh",
+            "anchorText": "Mục tiêu không phải làm giàu nhanh",
+            "visualWhy": "Biểu tượng cảnh báo phù hợp để phủ định kỳ vọng làm giàu tức thì.",
+            "mustRenderAs": ["warning", "no quick-rich cue"],
+            "renderKind": "warning",
+            "forbiddenSubstitutions": ["celebration", "large money pile"],
+            "slot": "bl",
+            "sequence": 3
+          },
+          {
+            "id": "less-time-dependent-income",
+            "label": "Cổ Nhân có nguồn thu ít phụ thuộc giờ làm",
+            "narrativeRole": "chốt lợi ích: thu nhập bớt gắn với từng giờ lao động trực tiếp",
+            "anchorText": "tạo thêm nguồn thu ngày càng ít phụ thuộc vào từng giờ bạn làm việc",
+            "visualWhy": "Nhân vật kết hợp tiền và trạng thái chủ động là hình chốt phù hợp cho kết luận về tự do thời gian tương đối.",
+            "mustRenderAs": ["Cổ Nhân character", "money cue", "confident pose"],
+            "renderKind": "conhan-money",
+            "forbiddenSubstitutions": ["sleeping character", "luxury lifestyle"],
+            "slot": "br",
+            "sequence": 4
+          }
+        ]
+      }
+    ]
+  }
 }
