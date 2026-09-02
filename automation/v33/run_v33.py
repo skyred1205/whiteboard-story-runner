@@ -87,6 +87,50 @@ def apply_upstream_runtime_fixes(upstream: Path) -> Path:
     return path
 
 
+def build_transition_contact_sheet(out_dir: Path) -> Path | None:
+    """Create a deterministic visual-QC sheet from every eraser transition."""
+    erase_files = [
+        p for p in sorted((out_dir / "scenes").glob("*/erase.mp4"))
+        if p.is_file() and p.stat().st_size > 0
+    ]
+    if not erase_files:
+        return None
+
+    from PIL import Image
+
+    qc_dir = out_dir / "qc"
+    frame_dir = qc_dir / "transition-sample-frames"
+    frame_dir.mkdir(parents=True, exist_ok=True)
+    thumbs: list[Image.Image] = []
+
+    for row, erase in enumerate(erase_files, start=1):
+        raw_duration = subprocess.check_output([
+            "ffprobe", "-v", "error", "-show_entries", "format=duration",
+            "-of", "default=nw=1:nk=1", str(erase),
+        ], text=True).strip()
+        duration = max(0.05, float(raw_duration))
+        for col, frac in enumerate((0.15, 0.50, 0.85), start=1):
+            timestamp = min(duration * frac, max(0.0, duration - 0.03))
+            frame = frame_dir / f"transition-{row:02d}-{col:02d}.jpg"
+            run([
+                "ffmpeg", "-y", "-loglevel", "error",
+                "-ss", f"{timestamp:.3f}", "-i", str(erase),
+                "-frames:v", "1", str(frame),
+            ])
+            with Image.open(frame) as im:
+                thumbs.append(im.convert("RGB").resize((270, 480), Image.Resampling.LANCZOS))
+
+    sheet = Image.new("RGB", (810, 480 * len(erase_files)), "white")
+    for idx, thumb in enumerate(thumbs):
+        row = idx // 3
+        col = idx % 3
+        sheet.paste(thumb, (col * 270, row * 480))
+    out = qc_dir / "transition-contact-sheet.jpg"
+    sheet.save(out, format="JPEG", quality=90, optimize=True)
+    print(f"TRANSITION_CONTACT_SHEET={out}", flush=True)
+    return out
+
+
 def validate_job(job: dict) -> None:
     if job.get("mode") != "production" or job.get("enabled") is not True:
         raise SystemExit("JOB_CONTRACT_ERROR: production job must be enabled")
@@ -177,6 +221,7 @@ def main() -> None:
         "--eraser-hand", str(runtime_assets / "eraser-hand.png"),
     ], env=os.environ.copy())
 
+    transition_sheet = build_transition_contact_sheet(out_dir)
     required = [
         out_dir / "final/final.mp4",
         out_dir / "project.zip",
@@ -185,6 +230,8 @@ def main() -> None:
         out_dir / "qc/source-contact-sheet.jpg",
         out_dir / "qc/final-contact-sheet.jpg",
     ]
+    if transition_sheet is not None:
+        required.append(transition_sheet)
     missing = [str(p) for p in required if not p.exists() or p.stat().st_size == 0]
     if missing:
         raise SystemExit("RUNNER_FAILED: missing deliverables: " + ", ".join(missing))
