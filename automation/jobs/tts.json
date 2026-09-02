@@ -1,7 +1,7 @@
 {
-  "enabled": false,
-  "jobId": "tts-disabled-template",
-  "text": "Mỗi ngày tiến một bước nhỏ.",
+  "enabled": true,
+  "jobId": "passive-income-30s-20260902-1600",
+  "text": "Thu nhập thụ động không có nghĩa là không làm gì mà vẫn có tiền. Đúng hơn, bạn tạo một tài sản hoặc hệ thống trước, rồi nó tiếp tục tạo ra dòng tiền. Ví dụ: tiền gửi sinh lãi, cổ tức từ doanh nghiệp, tiền cho thuê, hoặc một sản phẩm số bán nhiều lần. Điểm quan trọng là lúc đầu vẫn cần vốn, thời gian hoặc kỹ năng để xây nền tảng. Mục tiêu không phải làm giàu nhanh, mà là tạo thêm nguồn thu không phụ thuộc hoàn toàn vào từng giờ bạn làm việc.",
   "voiceAlias": "co-nhan",
   "speed": 1.0
 }
