@@ -71,6 +71,22 @@ def apply_v33_runtime_fixes(path: Path) -> None:
     print("Applied V3.3 runtime fix: compound-money final stack bounds", flush=True)
 
 
+def apply_upstream_runtime_fixes(upstream: Path) -> Path:
+    """Patch known defects in the pinned upstream checkout without changing the pin."""
+    path = upstream / "scripts/render_stream_whiteboard.py"
+    if not path.exists():
+        raise SystemExit("RUNNER_NOT_READY: pinned upstream renderer missing")
+    text = path.read_text(encoding="utf-8")
+    old = "                        self._lay_ink(writer, ink_frames, [], set(), None, allowed)"
+    new = "                        self._lay_ink(writer, ink_frames, [], set(), allowed)"
+    if old not in text:
+        raise SystemExit("RUNNER_NOT_READY: expected upstream empty-grid _lay_ink patch point not found")
+    text = text.replace(old, new, 1)
+    path.write_text(text, encoding="utf-8")
+    print("Applied upstream runtime fix: empty-grid _lay_ink arity", flush=True)
+    return path
+
+
 def validate_job(job: dict) -> None:
     if job.get("mode") != "production" or job.get("enabled") is not True:
         raise SystemExit("JOB_CONTRACT_ERROR: production job must be enabled")
@@ -126,11 +142,12 @@ def main() -> None:
         "--out", str(runtime_assets),
         "--upstream", str(upstream),
     ])
+    upstream_renderer = apply_upstream_runtime_fixes(upstream)
 
     core = restore_core(root)
     v33 = restore_v33(root)
     apply_v33_runtime_fixes(v33)
-    run([sys.executable, "-m", "py_compile", str(core), str(v33)])
+    run([sys.executable, "-m", "py_compile", str(core), str(v33), str(upstream_renderer)])
 
     core_job = copy.deepcopy(job)
     core_job["imageProvider"] = "local-doodle-v2"
