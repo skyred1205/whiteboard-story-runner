@@ -62,13 +62,44 @@ def restore_v33(root: Path) -> Path:
 def apply_v33_runtime_fixes(path: Path) -> None:
     """Apply narrowly-scoped fixes after validating the immutable V3.3 payload."""
     text = path.read_text(encoding="utf-8")
-    old = "        rr(d,(cx-int(w*.31),yy+70,cx+int(w*.31),min(y1-12,yy+70+bh)),16,'#6F9F6D',width=5)"
-    new = "        fy1=y1-12; fy0=max(y0+12,min(yy+35,fy1-max(38,min(bh,80)))); rr(d,(cx-int(w*.31),fy0,cx+int(w*.31),fy1),16,'#6F9F6D',width=5)"
-    if old not in text:
-        raise SystemExit("RUNNER_NOT_READY: expected compound-money patch point not found")
-    text = text.replace(old, new, 1)
+    patches = [
+        (
+            "        rr(d,(cx-int(w*.31),yy+70,cx+int(w*.31),min(y1-12,yy+70+bh)),16,'#6F9F6D',width=5)",
+            "        fy1=y1-12; fy0=max(y0+12,min(yy+35,fy1-max(38,min(bh,80)))); rr(d,(cx-int(w*.31),fy0,cx+int(w*.31),fy1),16,'#6F9F6D',width=5)",
+            "compound-money final stack bounds",
+        ),
+        (
+            "    n=max(2,round(duration_ms*fps/1000)); # serpentine sweeps across content area only",
+            "    n=max(3,round(duration_ms*fps/1000)); clear_frames=2 if n>=6 else 1; sweep_n=max(2,n-clear_frames)  # reserve a clean hold within eraseMs",
+            "eraser clean-hold frame budget",
+        ),
+        (
+            "    rows=5; radius=150",
+            "    rows=5; radius=190",
+            "eraser sweep overlap",
+        ),
+        (
+            "    for i in range(n):\n        p=i/(n-1); pos=p*(rows-1e-6); row=min(rows-1,int(pos)); frac=pos-row",
+            "    for i in range(sweep_n):\n        p=i/(sweep_n-1); pos=p*(rows-1e-6); row=min(rows-1,int(pos)); frac=pos-row",
+            "eraser sweep duration",
+        ),
+        (
+            "        md.ellipse((x-radius,y-radius,x+radius,y+radius),fill=255)\n        frame=Image.composite(bg,src,mask)",
+            "        md.ellipse((x-radius,y-radius,x+radius,y+radius),fill=255)\n        if i==sweep_n-1: md.rectangle((0,0,W,H),fill=255)\n        frame=Image.composite(bg,src,mask)",
+            "eraser final full clear",
+        ),
+        (
+            "        frame.alpha_composite(hand,(hx,hy)); frame.convert('RGB').save(frames_dir/f'{i:05d}.jpg',quality=90)\n    run(['ffmpeg','-y','-loglevel','error','-framerate',str(fps),'-i',str(frames_dir/'%05d.jpg'),'-c:v','libx264','-pix_fmt','yuv420p','-movflags','+faststart',str(output)])",
+            "        frame.alpha_composite(hand,(hx,hy)); frame.convert('RGB').save(frames_dir/f'{i:05d}.jpg',quality=90)\n    for i in range(sweep_n,n):\n        bg.convert('RGB').save(frames_dir/f'{i:05d}.jpg',quality=90)\n    run(['ffmpeg','-y','-loglevel','error','-framerate',str(fps),'-i',str(frames_dir/'%05d.jpg'),'-c:v','libx264','-pix_fmt','yuv420p','-movflags','+faststart',str(output)])",
+            "eraser blank tail inside transition",
+        ),
+    ]
+    for old, new, label in patches:
+        if old not in text:
+            raise SystemExit(f"RUNNER_NOT_READY: expected V3.3 patch point not found: {label}")
+        text = text.replace(old, new, 1)
+        print(f"Applied V3.3 runtime fix: {label}", flush=True)
     path.write_text(text, encoding="utf-8")
-    print("Applied V3.3 runtime fix: compound-money final stack bounds", flush=True)
 
 
 def apply_upstream_runtime_fixes(upstream: Path) -> Path:
@@ -88,7 +119,7 @@ def apply_upstream_runtime_fixes(upstream: Path) -> Path:
 
 
 def build_transition_contact_sheet(out_dir: Path) -> Path | None:
-    """Create a deterministic visual-QC sheet from every eraser transition."""
+    """Create transition visual-QC and hard-fail if the erase ends with remnants."""
     erase_files = [
         p for p in sorted((out_dir / "scenes").glob("*/erase.mp4"))
         if p.is_file() and p.stat().st_size > 0
@@ -96,6 +127,7 @@ def build_transition_contact_sheet(out_dir: Path) -> Path | None:
     if not erase_files:
         return None
 
+    import numpy as np
     from PIL import Image
 
     qc_dir = out_dir / "qc"
@@ -109,8 +141,8 @@ def build_transition_contact_sheet(out_dir: Path) -> Path | None:
             "-of", "default=nw=1:nk=1", str(erase),
         ], text=True).strip()
         duration = max(0.05, float(raw_duration))
-        for col, frac in enumerate((0.15, 0.50, 0.85), start=1):
-            timestamp = min(duration * frac, max(0.0, duration - 0.03))
+        for col, frac in enumerate((0.15, 0.55, 0.95), start=1):
+            timestamp = min(duration * frac, max(0.0, duration - 0.02))
             frame = frame_dir / f"transition-{row:02d}-{col:02d}.jpg"
             run([
                 "ffmpeg", "-y", "-loglevel", "error",
@@ -119,6 +151,26 @@ def build_transition_contact_sheet(out_dir: Path) -> Path | None:
             ])
             with Image.open(frame) as im:
                 thumbs.append(im.convert("RGB").resize((270, 480), Image.Resampling.LANCZOS))
+
+        final_frame = frame_dir / f"transition-{row:02d}-final.png"
+        run([
+            "ffmpeg", "-y", "-loglevel", "error", "-sseof", "-0.035",
+            "-i", str(erase), "-frames:v", "1", str(final_frame),
+        ])
+        with Image.open(final_frame) as im:
+            arr = np.array(im.convert("RGB").resize((270, 480), Image.Resampling.BILINEAR), dtype=np.int16)
+        corners = np.concatenate([
+            arr[:12, :12].reshape(-1, 3), arr[:12, -12:].reshape(-1, 3),
+            arr[-12:, :12].reshape(-1, 3), arr[-12:, -12:].reshape(-1, 3),
+        ], axis=0)
+        bg = np.median(corners, axis=0)
+        occupancy = float((np.abs(arr - bg).sum(axis=2) > 36).mean())
+        print(f"ERASER_CLEANUP scene={erase.parent.name} occupancy={occupancy:.6f}", flush=True)
+        if occupancy > 0.002:
+            raise SystemExit(
+                f"QC_FAILED: erase transition leaves visible remnants in {erase.parent.name} "
+                f"(occupancy={occupancy:.6f})"
+            )
 
     sheet = Image.new("RGB", (810, 480 * len(erase_files)), "white")
     for idx, thumb in enumerate(thumbs):
@@ -236,7 +288,12 @@ def main() -> None:
     if missing:
         raise SystemExit("RUNNER_FAILED: missing deliverables: " + ", ".join(missing))
     status = json.loads((out_dir / "status.json").read_text(encoding="utf-8"))
-    qc = json.loads((out_dir / "qc/v33-runner-qc.json").read_text(encoding="utf-8"))
+    qc_path = out_dir / "qc/v33-runner-qc.json"
+    qc = json.loads(qc_path.read_text(encoding="utf-8"))
+    if transition_sheet is not None:
+        qc["transitionContactSheet"] = "qc/transition-contact-sheet.jpg"
+        qc["eraserCleanupPass"] = True
+        qc_path.write_text(json.dumps(qc, ensure_ascii=False, indent=2), encoding="utf-8")
     if status.get("state") != "completed" or status.get("runnerVersion") != "3.3.0":
         raise SystemExit("RUNNER_FAILED: invalid V3.3 status")
     if qc.get("pass") is not True:
