@@ -118,6 +118,30 @@ def apply_upstream_runtime_fixes(upstream: Path) -> Path:
     return path
 
 
+def video_frame_count(video: Path) -> int:
+    raw = subprocess.check_output([
+        "ffprobe", "-v", "error", "-select_streams", "v:0", "-count_frames",
+        "-show_entries", "stream=nb_read_frames", "-of", "default=nw=1:nk=1", str(video),
+    ], text=True).strip()
+    try:
+        count = int(raw)
+    except ValueError as exc:
+        raise SystemExit(f"QC_FAILED: cannot determine frame count for {video}: {raw!r}") from exc
+    if count < 1:
+        raise SystemExit(f"QC_FAILED: transition contains no video frames: {video}")
+    return count
+
+
+def extract_frame(video: Path, index: int, output: Path) -> None:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    run([
+        "ffmpeg", "-y", "-loglevel", "error", "-i", str(video),
+        "-vf", f"select=eq(n\\,{index})", "-vsync", "0", "-frames:v", "1", str(output),
+    ])
+    if not output.exists() or output.stat().st_size == 0:
+        raise SystemExit(f"QC_FAILED: could not extract frame {index} from {video}")
+
+
 def build_transition_contact_sheet(out_dir: Path) -> Path | None:
     """Create transition visual-QC and hard-fail if the erase ends with remnants."""
     erase_files = [
@@ -136,27 +160,16 @@ def build_transition_contact_sheet(out_dir: Path) -> Path | None:
     thumbs: list[Image.Image] = []
 
     for row, erase in enumerate(erase_files, start=1):
-        raw_duration = subprocess.check_output([
-            "ffprobe", "-v", "error", "-show_entries", "format=duration",
-            "-of", "default=nw=1:nk=1", str(erase),
-        ], text=True).strip()
-        duration = max(0.05, float(raw_duration))
-        for col, frac in enumerate((0.15, 0.55, 0.95), start=1):
-            timestamp = min(duration * frac, max(0.0, duration - 0.02))
+        frame_count = video_frame_count(erase)
+        sample_indices = [round(frac * (frame_count - 1)) for frac in (0.15, 0.55, 0.95)]
+        for col, frame_index in enumerate(sample_indices, start=1):
             frame = frame_dir / f"transition-{row:02d}-{col:02d}.jpg"
-            run([
-                "ffmpeg", "-y", "-loglevel", "error",
-                "-ss", f"{timestamp:.3f}", "-i", str(erase),
-                "-frames:v", "1", str(frame),
-            ])
+            extract_frame(erase, frame_index, frame)
             with Image.open(frame) as im:
                 thumbs.append(im.convert("RGB").resize((270, 480), Image.Resampling.LANCZOS))
 
         final_frame = frame_dir / f"transition-{row:02d}-final.png"
-        run([
-            "ffmpeg", "-y", "-loglevel", "error", "-sseof", "-0.035",
-            "-i", str(erase), "-frames:v", "1", str(final_frame),
-        ])
+        extract_frame(erase, frame_count - 1, final_frame)
         with Image.open(final_frame) as im:
             arr = np.array(im.convert("RGB").resize((270, 480), Image.Resampling.BILINEAR), dtype=np.int16)
         corners = np.concatenate([
@@ -165,7 +178,11 @@ def build_transition_contact_sheet(out_dir: Path) -> Path | None:
         ], axis=0)
         bg = np.median(corners, axis=0)
         occupancy = float((np.abs(arr - bg).sum(axis=2) > 36).mean())
-        print(f"ERASER_CLEANUP scene={erase.parent.name} occupancy={occupancy:.6f}", flush=True)
+        print(
+            f"ERASER_CLEANUP scene={erase.parent.name} frames={frame_count} "
+            f"final_index={frame_count - 1} occupancy={occupancy:.6f}",
+            flush=True,
+        )
         if occupancy > 0.002:
             raise SystemExit(
                 f"QC_FAILED: erase transition leaves visible remnants in {erase.parent.name} "
@@ -181,6 +198,29 @@ def build_transition_contact_sheet(out_dir: Path) -> Path | None:
     sheet.save(out, format="JPEG", quality=90, optimize=True)
     print(f"TRANSITION_CONTACT_SHEET={out}", flush=True)
     return out
+
+
+def rebuild_project_zip(out_dir: Path) -> Path:
+    """Rebuild the downloadable project bundle after all V3.3 outputs and QC are final."""
+    import zipfile
+
+    target = out_dir / "project.zip"
+    temp = out_dir / ".project-v33.tmp.zip"
+    target.unlink(missing_ok=True)
+    temp.unlink(missing_ok=True)
+    with zipfile.ZipFile(temp, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
+        for path in sorted(out_dir.rglob("*")):
+            if not path.is_file() or path in {target, temp}:
+                continue
+            rel = path.relative_to(out_dir)
+            if rel.parts and rel.parts[0] == "v33_tmp":
+                continue
+            archive.write(path, rel.as_posix())
+    os.replace(temp, target)
+    if not target.exists() or target.stat().st_size == 0:
+        raise SystemExit("RUNNER_FAILED: could not rebuild final project.zip")
+    print(f"PROJECT_ZIP_V33={target}", flush=True)
+    return target
 
 
 def validate_job(job: dict) -> None:
@@ -274,19 +314,19 @@ def main() -> None:
     ], env=os.environ.copy())
 
     transition_sheet = build_transition_contact_sheet(out_dir)
-    required = [
+    preliminary_required = [
         out_dir / "final/final.mp4",
-        out_dir / "project.zip",
         out_dir / "status.json",
         out_dir / "qc/v33-runner-qc.json",
         out_dir / "qc/source-contact-sheet.jpg",
         out_dir / "qc/final-contact-sheet.jpg",
     ]
     if transition_sheet is not None:
-        required.append(transition_sheet)
-    missing = [str(p) for p in required if not p.exists() or p.stat().st_size == 0]
+        preliminary_required.append(transition_sheet)
+    missing = [str(p) for p in preliminary_required if not p.exists() or p.stat().st_size == 0]
     if missing:
         raise SystemExit("RUNNER_FAILED: missing deliverables: " + ", ".join(missing))
+
     status = json.loads((out_dir / "status.json").read_text(encoding="utf-8"))
     qc_path = out_dir / "qc/v33-runner-qc.json"
     qc = json.loads(qc_path.read_text(encoding="utf-8"))
@@ -300,6 +340,12 @@ def main() -> None:
         raise SystemExit("QC_FAILED: deterministic runner QC failed")
     if qc.get("requiresChatGPTVisionGate") is not True:
         raise SystemExit("QC_FAILED: independent vision gate must remain mandatory")
+
+    project_zip = rebuild_project_zip(out_dir)
+    required = preliminary_required + [project_zip]
+    missing = [str(p) for p in required if not p.exists() or p.stat().st_size == 0]
+    if missing:
+        raise SystemExit("RUNNER_FAILED: missing deliverables after packaging: " + ", ".join(missing))
     print("V3.3 RUNNER PASS. Independent ChatGPT vision gate is still mandatory before FINAL.")
 
 
