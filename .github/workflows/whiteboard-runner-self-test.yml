@@ -74,13 +74,32 @@ jobs:
           test -s automation/output/self-test/qc/transition-contact-sheet.jpg
           python - <<'PY'
           import json
+          import zipfile
           from pathlib import Path
+
           root=Path('automation/output/self-test')
           status=json.loads((root/'status.json').read_text(encoding='utf-8'))
           qc=json.loads((root/'qc/v33-runner-qc.json').read_text(encoding='utf-8'))
           assert status['runnerVersion']=='3.3.0' and status['state']=='completed'
           assert qc['pass'] is True
           assert qc['requiresChatGPTVisionGate'] is True
+          assert qc['eraserCleanupPass'] is True
+          assert qc['transitionContactSheet']=='qc/transition-contact-sheet.jpg'
+
+          required_bundle_files=(
+              'final/final.mp4',
+              'project.json',
+              'status.json',
+              'qc/v33-runner-qc.json',
+              'qc/source-contact-sheet.jpg',
+              'qc/final-contact-sheet.jpg',
+              'qc/transition-contact-sheet.jpg',
+          )
+          with zipfile.ZipFile(root/'project.zip') as bundle:
+              names=set(bundle.namelist())
+              for rel in required_bundle_files:
+                  assert rel in names, f'missing from project.zip: {rel}'
+                  assert bundle.read(rel)==(root/rel).read_bytes(), f'stale bundle entry: {rel}'
           print('SELF_TEST_PASS')
           PY
 
